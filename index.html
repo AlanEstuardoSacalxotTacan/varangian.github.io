@@ -1,0 +1,1954 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JORMUNDGANDRSSON — MULTI-BROKER TERMINAL v4</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0a;color:#fff;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.45;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+/* Colors */
+.g{color:#2ecc71}.go{color:#f1c40f}.am{color:#e67e22}.re{color:#e74c3c}.bl{color:#3498db}
+.d1{color:#aaa}.d2{color:#555}.d3{color:#2a2a2a}
+/* Header */
+.hdr{background:#0d0d0d;border-bottom:1px solid #1e1e1e;padding:7px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.hdr-brand{color:#f1c40f;font-size:15px;font-weight:600;letter-spacing:3px}
+.hdr-sub{font-size:9px;color:#444;letter-spacing:1.2px;margin-top:1px}
+.hdr-stat-label{font-size:8px;color:#444;letter-spacing:1px;text-transform:uppercase;margin-bottom:1px}
+.hdr-stat-val{font-size:13px;font-weight:500}
+/* Nav */
+.nav{background:#0d0d0d;border-bottom:1px solid #161616;display:flex;padding:0 14px;flex-shrink:0}
+.nav-tab{padding:7px 14px;font-size:9px;letter-spacing:2px;cursor:pointer;color:#444;border-bottom:2px solid transparent;font-family:'JetBrains Mono',monospace;text-transform:uppercase}
+.nav-tab.active{color:#f1c40f;border-bottom-color:#f1c40f}
+.nav-tab:hover:not(.active){color:#888}
+/* Body layout */
+.body{display:flex;flex:1;overflow:hidden}
+.main{flex:1;min-width:0;overflow-y:auto;display:flex;flex-direction:column;max-height:calc(100vh - 80px)}
+.sidebar{width:200px;flex-shrink:0;border-left:1px solid #161616;overflow-y:auto}
+/* Global control bar */
+.gc-bar{background:#111;border-bottom:1px solid #1a1a1a;padding:8px 14px;display:flex;align-items:center;gap:0;flex-shrink:0;flex-wrap:nowrap}
+.gc-section{padding:0 12px;display:flex;flex-direction:column;justify-content:center}
+.gc-section:first-child{padding-left:0}
+.gc-label{font-size:8px;color:#444;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px}
+.gc-sep{width:1px;background:#1e1e1e;height:32px;flex-shrink:0;margin:0 4px}
+/* Broker cards area */
+.brokers{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;flex:1;min-height:0;overflow:hidden}
+.br-card{border-top:2px solid;border-right:1px solid #161616;display:flex;flex-direction:column;overflow-y:auto;background:#0a0a0a}
+.br-card:last-child{border-right:none}
+.br-header{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:#0d0d0d;border-bottom:1px solid #1a1a1a;flex-shrink:0}
+.br-body{padding:8px 10px;flex:1}
+.br-section-title{font-size:8px;color:#444;letter-spacing:1.8px;text-transform:uppercase;margin-bottom:5px;padding-bottom:4px;border-bottom:1px solid #161616}
+.br-op-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;font-size:10px}
+.br-op-row{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;font-size:10px}
+.br-label{font-size:8px;color:#444;letter-spacing:.8px;text-transform:uppercase;margin-bottom:2px}
+/* Daily bar */
+.daily-bar{background:#0d0d0d;border-top:1px solid #1a1a1a;display:flex;align-items:stretch;flex-shrink:0;flex-wrap:nowrap}
+.daily-section{padding:7px 12px;border-right:1px solid #161616;display:flex;flex-direction:column;justify-content:center}
+.daily-section:last-child{border-right:none}
+.broker-targets{display:grid;grid-template-columns:1fr 1fr 1fr;border-top:1px solid #161616;flex-shrink:0}
+.bt-cell{padding:6px 12px;border-right:1px solid #161616}
+.bt-cell:last-child{border-right:none}
+/* Sidebar */
+.panel{border:1px solid #1a1a1a;margin:5px;padding:8px 10px;background:#0d0d0d}
+.ptitle{font-size:8px;color:#444;letter-spacing:2px;text-transform:uppercase;margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid #161616}
+.mini-row{display:flex;justify-content:space-between;font-size:10px;padding:3px 0;border-bottom:1px solid #0f0f0f;color:#fff}
+.mini-row:last-child{border-bottom:none}
+.stat-label{font-size:8px;color:#444;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px}
+.stat-val{font-size:15px;font-weight:500}
+.stat-sub{font-size:9px;color:#555;margin-top:1px}
+.hbar{height:2px;background:#181818;margin:4px 0}
+.hfill{height:100%}
+/* Buttons */
+.btn{background:transparent;border:1px solid #222;padding:3px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;color:#888;letter-spacing:.5px}
+.btn:hover:not(:disabled){border-color:#444;color:#fff}
+.btn:disabled{opacity:.2;cursor:not-allowed}
+.btn-g{color:#2ecc71;border-color:#1a5c2c}.btn-g:hover{background:#030a06}
+.btn-r{color:#e74c3c;border-color:#5c1a1a}.btn-r:hover{background:#0a0303}
+.btn-go{color:#f1c40f;border-color:#5c4800}.btn-go:hover{background:#0a0a00}
+.btn-am{color:#e67e22;border-color:#5c2e00}.btn-am:hover{background:#0a0500}
+.btn-sm{padding:2px 8px;font-size:10px}
+/* Inputs */
+input,select{background:#111;color:#fff;border:1px solid #222;padding:3px 7px;font-family:'JetBrains Mono',monospace;font-size:11px;width:100%}
+input:focus,select:focus{outline:none;border-color:#383838;background:#161616}
+select option{background:#111;color:#fff}
+label{font-size:8px;color:#444;letter-spacing:1px;display:block;margin-bottom:2px}
+/* Direction buttons */
+.dir-btn{flex:1;padding:5px 10px;border:1px solid #1e1e1e;background:#080808;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;color:#2a2a2a;letter-spacing:1.5px;min-width:60px}
+.dir-btn:hover:not(.dir-call):not(.dir-put){border-color:#333;color:#666}
+.dir-call{border-color:#1a5c2c!important;color:#2ecc71!important;background:#030a06!important}
+.dir-put{border-color:#5c1a1a!important;color:#e74c3c!important;background:#0a0303!important}
+/* Result buttons */
+.res-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:6px}
+.res-btn{padding:8px 4px;border:1px solid #1e1e1e;background:transparent;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;letter-spacing:1.2px;text-align:center}
+.res-win{color:#2ecc71;border-color:#1a5c2c}.res-win:hover{background:#030a06}
+.res-loss{color:#e74c3c;border-color:#5c1a1a}.res-loss:hover{background:#0a0303}
+.res-draw{color:#f1c40f;border-color:#5c4800}.res-draw:hover{background:#0a0a00}
+/* MG bar */
+.mg-row{display:flex;align-items:center;gap:2px;flex-wrap:nowrap}
+.mg-n{padding:2px 4px;border:1px solid #1a1a1a;color:#252525;font-size:9px;min-width:26px;text-align:center;position:relative}
+.mg-n.done{border-color:#0a3018;color:#0a3a1a;background:#030805}
+.mg-n.cur{border-color:#2ecc71;color:#2ecc71;font-weight:600;background:#04100a}
+.mg-n.rdone{border-color:#3a1000;color:#241000;background:#060200}
+.mg-n.rcur{border-color:#e67e22;color:#e67e22;font-weight:600;background:#0f0500}
+.mg-n.rpend{border-color:#181818;color:#1e1e1e}
+.mg-sub{font-size:6px;display:block;letter-spacing:.5px}
+.mg-sep{color:#222;font-size:8px;flex-shrink:0}
+.mg-wall{color:#2a2a2a;padding:0 3px;font-size:10px;flex-shrink:0}
+/* Badges */
+.badge{font-size:8px;padding:1px 5px;border:1px solid;letter-spacing:.5px;display:inline-block;white-space:nowrap}
+.bopen{color:#3498db;border-color:#133a5c}.bclosed{color:#444;border-color:#222}
+.bwin{color:#2ecc71;border-color:#1a5c2c}.bloss{color:#e74c3c;border-color:#5c1a1a}
+.bdraw{color:#f1c40f;border-color:#5c4800}.bcall{color:#2ecc71;border-color:#1a5c2c}
+.bput{color:#e74c3c;border-color:#5c1a1a}.bpend{color:#e67e22;border-color:#5c2e00}
+.bact{color:#f1c40f;border-color:#5c4800}.bres{color:#2ecc71;border-color:#1a5c2c}
+.bfail{color:#e74c3c;border-color:#5c1a1a}
+/* Ticket */
+.tkt{border:1px solid #1a1a1a;border-left:2px solid;padding:5px 7px;margin-bottom:4px}
+.tkt-PENDING{border-left-color:#e67e22}.tkt-ACTIVE{border-left-color:#f1c40f}
+.tkt-RESOLVED{border-left-color:#2ecc71;opacity:.4}.tkt-FAILED{border-left-color:#e74c3c;opacity:.4}
+/* Tables */
+.tbl{width:100%;border-collapse:collapse;font-size:10px}
+.tbl th{font-size:8px;color:#444;letter-spacing:1px;padding:3px 5px;border-bottom:1px solid #181818;text-align:left;font-weight:400;text-transform:uppercase;white-space:nowrap}
+.tbl td{padding:3px 5px;border-bottom:1px solid #0f0f0f;white-space:nowrap;color:#fff}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:#0c0c0c}
+/* History */
+.hist-main{flex:1;overflow-y:auto;padding:10px}
+.hist-cards{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:8px}
+.hist-card{background:#0d0d0d;border:1px solid #1a1a1a;padding:8px 10px}
+.hist-card-label{font-size:8px;color:#444;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px}
+.hist-card-val{font-size:14px;font-weight:500}
+.hist-card-sub{font-size:9px;color:#444;margin-top:1px}
+.hist-section{margin-bottom:8px}
+.hist-panel{background:#0d0d0d;border:1px solid #1a1a1a;padding:8px 10px;margin-bottom:6px}
+.hist-ptitle{font-size:8px;color:#444;letter-spacing:2px;text-transform:uppercase;margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid #161616;display:flex;align-items:center;justify-content:space-between}
+/* Tree */
+.tree-day{border:1px solid #1a1a1a;margin-bottom:4px;background:#0d0d0d}
+.tree-day-hdr{padding:6px 10px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:10px;background:#111}
+.tree-day-hdr:hover{background:#161616}
+.tree-sess{border-top:1px solid #141414;background:#0a0a0a}
+.tree-sess-hdr{padding:5px 20px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:10px}
+.tree-sess-hdr:hover{background:#0e0e0e}
+.tree-blk{border-top:1px solid #0f0f0f}
+.tree-blk-hdr{padding:4px 30px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:10px;color:#888}
+.tree-blk-hdr:hover{background:#0c0c0c}
+.tree-trades{padding:4px 40px;overflow-x:auto}
+/* Filters */
+.filter-bar{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center}
+.filter-bar select{height:26px;font-size:10px;width:auto;min-width:90px}
+.filter-bar .btn{height:26px}
+/* Toast */
+#toast{display:none;position:fixed;bottom:12px;right:12px;background:#111;border:1px solid #222;border-left:2px solid;padding:7px 12px;font-size:10px;font-family:'JetBrains Mono',monospace;z-index:9999;max-width:320px;color:#fff}
+/* Close sug */
+.close-sug{background:#030d06;border:1px solid #1a5c2c;padding:4px 8px;margin-bottom:5px;font-size:9px;color:#2ecc71}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:#0a0a0a}
+::-webkit-scrollbar-thumb{background:#222}
+/* Profile overlay */
+#profile-overlay{position:fixed;inset:0;background:#050505;z-index:9000;display:none;flex-direction:column;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace}
+.po-box{border:1px solid #222;padding:30px 36px;min-width:400px;max-width:520px;background:#0d0d0d}
+.po-title{color:#f1c40f;font-size:14px;font-weight:600;letter-spacing:4px;margin-bottom:4px}
+.po-sub{font-size:9px;color:#444;letter-spacing:2px;margin-bottom:24px}
+.po-list{margin-bottom:18px;max-height:280px;overflow-y:auto}
+.po-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid #1a1a1a;margin-bottom:3px;cursor:pointer;font-size:11px}
+.po-item:hover{border-color:#333;background:#111}
+.po-item.active-p{border-color:#f1c40f;color:#f1c40f}
+.po-item-name{flex:1}
+.po-item-meta{font-size:9px;color:#444;margin-right:10px}
+.po-item-actions{display:flex;gap:4px}
+.po-input-row{display:flex;gap:6px;margin-bottom:8px}
+.po-input-row input{flex:1;height:28px}
+/* Profile bar */
+.profile-bar{background:#070707;border-bottom:1px solid #141414;padding:4px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;font-size:9px}
+.profile-bar-name{color:#f1c40f;letter-spacing:2px;font-weight:600}
+.profile-bar-label{color:#444;letter-spacing:1.5px;margin-right:6px}
+/* Settings view */
+.settings-main{flex:1;overflow-y:auto;padding:10px;height:100%;max-height:calc(100vh - 95px)}
+.settings-section{background:#0d0d0d;border:1px solid #1a1a1a;padding:12px 14px;margin-bottom:8px}
+.settings-title{font-size:8px;color:#444;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #161616}
+.settings-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.settings-label{font-size:9px;color:#888;letter-spacing:1px;min-width:100px}
+.settings-input{width:120px;height:26px;font-size:11px}
+.settings-warning{background:#0a0500;border:1px solid #3a2000;padding:6px 10px;font-size:9px;color:#e67e22;margin-bottom:8px;letter-spacing:.5px}
+.settings-locked{font-size:10px;color:#333}
+.cap-summary-tbl{width:100%;border-collapse:collapse;font-size:10px}
+.cap-summary-tbl th{font-size:8px;color:#444;letter-spacing:1px;padding:4px 8px;border-bottom:1px solid #181818;text-align:left;font-weight:400;text-transform:uppercase}
+.cap-summary-tbl td{padding:5px 8px;border-bottom:1px solid #0f0f0f}
+.cap-summary-tbl tr:last-child td{border-bottom:none}
+/* Supabase sync */
+#sync-indicator{position:fixed;top:6px;right:52px;font-size:8px;font-family:'JetBrains Mono',monospace;letter-spacing:1.5px;z-index:8000;padding:2px 7px;border:1px solid;pointer-events:none;opacity:0;transition:opacity .4s}
+#sync-indicator.show{opacity:1}
+#sync-indicator.sync-ok{color:#2ecc71;border-color:#1a5c2c;background:#020805}
+#sync-indicator.sync-err{color:#e74c3c;border-color:#5c1a1a;background:#080202}
+#sync-indicator.sync-ing{color:#f1c40f;border-color:#5c4800;background:#080800}
+#sync-indicator.sync-live{color:#3498db;border-color:#133a5c;background:#010810}
+.sb-cfg-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.sb-cfg-label{font-size:9px;color:#888;letter-spacing:1px;min-width:110px;flex-shrink:0}
+.sb-cfg-input{flex:1;min-width:200px;height:26px;font-size:10px;font-family:'JetBrains Mono',monospace}
+.sb-status-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px;flex-shrink:0}
+.sb-status-row{display:flex;align-items:center;font-size:10px;padding:6px 0}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="toast"></div>
+<div id="profile-overlay"></div>
+<div id="sync-indicator"></div>
+<script>
+// ─── CONSTANTS ────────────────────────────────────────────────────────────────
+const MG_N=[1,2,5,11],MG_R=[23,50,104],MG_FULL=[1,2,5,11,23,50,104],SK='jormund_v5';
+const BIDS=['b1','b2','b3'];
+const BR_CFG={
+  b1:{name:'BROKER 1',label:'AZUL',   color:'#3498db',border:'#1a4a6c',dim:'#0a1e2e'},
+  b2:{name:'BROKER 2',label:'VERDE',  color:'#2ecc71',border:'#1a5c2c',dim:'#0a1e12'},
+  b3:{name:'BROKER 3',label:'NARANJA',color:'#e67e22',border:'#5c3000',dim:'#1e0f00'},
+};
+const PROFILE_LIST_KEY='jormund_profiles';
+const ACTIVE_PROFILE_KEY='jormund_active_profile';
+const SB_CFG_KEY='jormund_sb_cfg';
+
+// ─── SUPABASE LAYER ───────────────────────────────────────────────────────────
+let _sb=null;          // supabase client instance
+let _sbReady=false;    // true once connected & tested
+let _sbRealtime=null;  // active realtime subscription
+let _syncTimer=null;
+let _pendingSync=false;
+
+function sbCfgLoad(){
+  try{return JSON.parse(localStorage.getItem(SB_CFG_KEY)||'{}');}catch(e){return{};}
+}
+function sbCfgSave(url,key){
+  localStorage.setItem(SB_CFG_KEY,JSON.stringify({url:url.trim(),key:key.trim()}));
+}
+
+async function sbInit(url,anonKey){
+  try{
+    if(!url||!anonKey)return false;
+    _sb=supabase.createClient(url.trim(),anonKey.trim(),{
+      realtime:{params:{eventsPerSecond:10}},
+      auth:{persistSession:false}
+    });
+    // Test connection: upsert a probe row
+    const {error}=await _sb.from('profile_state').select('profile_id').limit(1);
+    if(error&&error.code!=='PGRST116'){console.warn('SB test:',error);_sb=null;_sbReady=false;return false;}
+    _sbReady=true;
+    syncIndicator('ok','SUPABASE OK');
+    return true;
+  }catch(e){console.warn('sbInit error:',e);_sb=null;_sbReady=false;return false;}
+}
+
+function syncIndicator(type,msg){
+  const el=document.getElementById('sync-indicator');if(!el)return;
+  el.textContent=msg;el.className='show sync-'+type;
+  clearTimeout(window._syncIndTimer);
+  if(type==='ok'||type==='live')window._syncIndTimer=setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+// Write full profile state to Supabase (upsert)
+async function sbPersist(pid,stateObj){
+  if(!_sb||!_sbReady||!pid)return;
+  syncIndicator('ing','SYNCING…');
+  try{
+    const {error}=await _sb.from('profile_state').upsert(
+      {profile_id:pid, state_json:stateObj, updated_at:new Date().toISOString()},
+      {onConflict:'profile_id'}
+    );
+    if(error){syncIndicator('err','SYNC ERR');console.warn('sbPersist:',error);}
+    else syncIndicator('ok','SYNCED ✓');
+  }catch(e){syncIndicator('err','SYNC ERR');console.warn('sbPersist ex:',e);}
+}
+
+// Write profiles list to Supabase
+async function sbPersistProfiles(list){
+  if(!_sb||!_sbReady)return;
+  try{
+    await _sb.from('profile_list').upsert(
+      {id:'global',profiles:list,updated_at:new Date().toISOString()},
+      {onConflict:'id'}
+    );
+  }catch(e){console.warn('sbPersistProfiles:',e);}
+}
+
+// Read profile state from Supabase
+async function sbHydrate(pid){
+  if(!_sb||!_sbReady||!pid)return null;
+  try{
+    const {data,error}=await _sb.from('profile_state').select('state_json').eq('profile_id',pid).single();
+    if(error||!data)return null;
+    return data.state_json;
+  }catch(e){return null;}
+}
+
+// Read profiles list from Supabase
+async function sbLoadProfiles(){
+  if(!_sb||!_sbReady)return null;
+  try{
+    const {data,error}=await _sb.from('profile_list').select('profiles').eq('id','global').single();
+    if(error||!data)return null;
+    return data.profiles;
+  }catch(e){return null;}
+}
+
+// Delete profile state from Supabase
+async function sbDeleteProfile(pid){
+  if(!_sb||!_sbReady)return;
+  try{await _sb.from('profile_state').delete().eq('profile_id',pid);}catch(e){}
+}
+
+// Subscribe to realtime changes for active profile
+function sbSubscribe(pid){
+  if(!_sb||!_sbReady||!pid)return;
+  sbUnsubscribe();
+  _sbRealtime=_sb.channel('profile_'+pid)
+    .on('postgres_changes',
+      {event:'UPDATE',schema:'public',table:'profile_state',filter:'profile_id=eq.'+pid},
+      (payload)=>{
+        // Another client updated this profile — reload state if not currently persisting
+        if(_pendingSync)return;
+        const remote=payload.new?.state_json;
+        if(!remote)return;
+        syncIndicator('live','↓ LIVE UPDATE');
+        applyState(remote);
+        render();
+      }
+    ).subscribe();
+}
+function sbUnsubscribe(){
+  if(_sbRealtime){try{_sb.removeChannel(_sbRealtime);}catch(e){}}_sbRealtime=null;
+}
+
+// ─── PROFILE SYSTEM ───────────────────────────────────────────────────────────
+function profileStateKey(pid){return'jormund_profile_'+pid+'_state';}
+function loadProfileList(){try{return JSON.parse(localStorage.getItem(PROFILE_LIST_KEY)||'[]');}catch(e){return[];}}
+function saveProfileList(list){
+  try{localStorage.setItem(PROFILE_LIST_KEY,JSON.stringify(list));}catch(e){}
+  sbPersistProfiles(list);
+}
+function getActiveProfileId(){return localStorage.getItem(ACTIVE_PROFILE_KEY)||null;}
+function setActiveProfileId(pid){localStorage.setItem(ACTIVE_PROFILE_KEY,pid);}
+function createProfile(name){
+  const pid='p'+Date.now().toString(36)+Math.random().toString(36).slice(2,4);
+  const list=loadProfileList();list.push({id:pid,name:name.trim(),createdAt:new Date().toISOString()});
+  saveProfileList(list);return pid;
+}
+function deleteProfile(pid){
+  const list=loadProfileList().filter(p=>p.id!==pid);saveProfileList(list);
+  try{localStorage.removeItem(profileStateKey(pid));}catch(e){}
+  sbDeleteProfile(pid);
+}
+function renameProfile(pid,newName){
+  const list=loadProfileList();const p=list.find(x=>x.id===pid);if(p)p.name=newName.trim();saveProfileList(list);
+}
+function getProfileName(pid){
+  const list=loadProfileList();const p=list.find(x=>x.id===pid);return p?p.name:'?';
+}
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+function defBroker(id){
+  return{id,enabled:true,capital:100,initialCapital:100,asset:'',payout:92,
+    sessions:[],blocks:[],trades:[],tickets:[],
+    activeSessionId:null,activeBlockId:null,
+    blockMG:{level:0,accLoss:0},
+    recState:{active:false,ticketIds:[],curIdx:0,level:0},
+    dailyTarget:66.67};
+}
+let G={direction:'CALL',payoutDefault:92,dailyTarget:200,
+  useRecoveryTickets:true,
+  activeDayId:null,days:[],capitalHistory:[],
+  _view:'register',_histTab:'ledger',
+  _lf:{broker:'ALL',result:'ALL',mode:'ALL'},
+  _tree:{},_ready:false};
+let BS={b1:defBroker('b1'),b2:defBroker('b2'),b3:defBroker('b3')};
+let _activeProfileId=null;
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+const uid=()=>'x'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+const nowT=()=>{const d=new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0')};
+const todayD=()=>new Date().toISOString().split('T')[0];
+const fmt=v=>'$'+Math.abs(+v).toFixed(2);
+const fmtS=v=>(+v>=0?'+':'-')+'$'+Math.abs(+v).toFixed(2);
+const fmtP=v=>(+v>=0?'+':'')+parseFloat(v).toFixed(2)+'%';
+const aDay=()=>G.days.find(d=>d.id===G.activeDayId)||null;
+const b=id=>BS[id];
+const bCap=id=>{const br=b(id);const last=[...br.trades].reverse()[0];return last?last.capitalAfter:br.capital};
+const bASess=id=>{const br=b(id);return br.sessions.find(s=>s.id===br.activeSessionId)||null};
+const bABlock=id=>{const br=b(id);return br.blocks.find(bl=>bl.id===br.activeBlockId)||null};
+const bPendTkts=id=>b(id).tickets.filter(t=>t.status==='PENDING');
+const bBTrades=(id,blockId)=>b(id).trades.filter(t=>t.blockId===blockId);
+const totalCap=()=>BIDS.reduce((s,id)=>s+bCap(id),0);
+const totalIni=()=>BIDS.reduce((s,id)=>s+(b(id).initialCapital||b(id).capital),0);
+const totalPnl=()=>+(totalCap()-totalIni()).toFixed(2);
+const allTrades=()=>BIDS.flatMap(id=>b(id).trades);
+const allTkts=()=>BIDS.flatMap(id=>b(id).tickets);
+
+// ─── PERSIST / HYDRATE ───────────────────────────────────────────────────────
+function stateSnapshot(){
+  return{
+    G:{direction:G.direction,payoutDefault:G.payoutDefault,dailyTarget:G.dailyTarget,
+       useRecoveryTickets:G.useRecoveryTickets,
+       activeDayId:G.activeDayId,days:G.days,capitalHistory:G.capitalHistory,
+       _view:G._view,_histTab:G._histTab,_lf:G._lf,_tree:G._tree},
+    BS};
+}
+function applyState(d){
+  if(d.G)Object.assign(G,d.G);
+  if(d.BS)BIDS.forEach(id=>{if(d.BS[id])BS[id]=Object.assign(defBroker(id),d.BS[id])});
+  G._lf=G._lf||{broker:'ALL',result:'ALL',mode:'ALL'};G._tree=G._tree||{};
+}
+
+function persist(){
+  if(!_activeProfileId)return;
+  const snap=stateSnapshot();
+  // 1. localStorage (immediate, always)
+  try{localStorage.setItem(profileStateKey(_activeProfileId),JSON.stringify(snap));}catch(e){}
+  // 2. Supabase (debounced 600ms to batch rapid clicks)
+  _pendingSync=true;
+  clearTimeout(_syncTimer);
+  _syncTimer=setTimeout(async()=>{
+    await sbPersist(_activeProfileId,snap);
+    _pendingSync=false;
+  },600);
+}
+
+async function hydrate(){
+  if(!_activeProfileId){G._ready=true;return;}
+  // Try Supabase first (most up-to-date)
+  let loaded=false;
+  if(_sbReady){
+    const remote=await sbHydrate(_activeProfileId);
+    if(remote){applyState(remote);loaded=true;
+      // Also update localStorage cache
+      try{localStorage.setItem(profileStateKey(_activeProfileId),JSON.stringify(remote));}catch(e){}
+    }
+  }
+  // Fallback to localStorage
+  if(!loaded){
+    try{
+      const r=localStorage.getItem(profileStateKey(_activeProfileId));
+      if(r){const d=JSON.parse(r);applyState(d);}
+    }catch(e){}
+  }
+  G._ready=true;
+}
+
+async function loadProfile(pid){
+  _activeProfileId=pid;setActiveProfileId(pid);
+  Object.assign(G,{direction:'CALL',payoutDefault:92,dailyTarget:200,useRecoveryTickets:true,activeDayId:null,
+    days:[],capitalHistory:[],_view:'register',_histTab:'ledger',
+    _lf:{broker:'ALL',result:'ALL',mode:'ALL'},_tree:{},_ready:false});
+  BS={b1:defBroker('b1'),b2:defBroker('b2'),b3:defBroker('b3')};
+  // Load local first, immediately
+  try{
+    const r=localStorage.getItem(profileStateKey(pid));
+    if(r){const d=JSON.parse(r);applyState(d);}
+  }catch(e){}
+  validateState();
+  G._ready=true;
+  document.getElementById('profile-overlay').style.display='none';
+  safeRender();
+  // Then try Supabase in background
+  if(_sbReady){
+    try{
+      const remote=await sbHydrate(pid);
+      if(remote){applyState(remote);validateState();
+        localStorage.setItem(profileStateKey(pid),JSON.stringify(remote));
+        safeRender();}
+    }catch(e){}
+  }
+  sbSubscribe(pid);
+}
+
+// ─── DAY ──────────────────────────────────────────────────────────────────────
+function openDay(){
+  if(G.activeDayId)return;
+  BIDS.forEach(id=>{
+    const ce=document.getElementById('ini-cap-'+id);
+    if(ce){const v=parseFloat(ce.value);if(v>0){BS[id].capital=v;BS[id].initialCapital=v;}}
+    const pe=document.getElementById('br-payout-'+id);
+    if(pe){const v=parseInt(pe.value);if(v>0)BS[id].payout=v;}
+  });
+  const dte=document.getElementById('inp-daily-target');
+  if(dte){const v=parseFloat(dte.value);if(v>0){G.dailyTarget=v;BIDS.forEach(id=>BS[id].dailyTarget=+((v/3)).toFixed(2));}}
+  const pwe=document.getElementById('inp-payout-default');
+  if(pwe){const v=parseInt(pwe.value);if(v>0){G.payoutDefault=v;BIDS.forEach(id=>BS[id].payout=v);}}
+  const cap=totalCap();
+  const day={id:uid(),num:G.days.length+1,date:todayD(),status:'OPEN',openTime:nowT(),closeTime:null,capitalStart:cap,capitalEnd:null};
+  G.days.push(day);G.activeDayId=day.id;
+  G.capitalHistory.push({date:day.date,time:nowT(),capital:cap,note:'DAY '+day.num+' OPEN',dayNum:day.num});
+  BIDS.forEach(id=>{
+    const pend=bPendTkts(id);
+    if(G.useRecoveryTickets&&pend.length){BS[id].recState={active:true,ticketIds:pend.map(t=>t.id),curIdx:0,level:0};pend[0].status='ACTIVE';}
+    else BS[id].recState={active:false,ticketIds:[],curIdx:0,level:0};
+  });
+  persist();render();
+}
+function closeDay(){
+  const day=aDay();if(!day)return;
+  if(BIDS.some(id=>BS[id].activeSessionId)){toast('Cierra todas las sesiones primero','am');return}
+  if(G.useRecoveryTickets&&BIDS.some(id=>BS[id].recState.active)){toast('Termina todos los recoveries','am');return}
+  day.status='CLOSED';day.closeTime=nowT();day.capitalEnd=totalCap();G.activeDayId=null;
+  persist();render();
+}
+
+// ─── DIRECTION ────────────────────────────────────────────────────────────────
+function setDir(dir){
+  G.direction=dir;
+  document.querySelectorAll('.dir-btn').forEach(btn=>{
+    btn.className='dir-btn'+(btn.dataset.dir===dir?(dir==='CALL'?' dir-call':' dir-put'):'');
+  });
+  persist();
+}
+
+// ─── RECOVERY ────────────────────────────────────────────────────────────────
+function advRec(id){
+  const br=b(id);const ni=br.recState.curIdx+1;
+  if(ni<br.recState.ticketIds.length){
+    br.recState.curIdx=ni;br.recState.level=0;
+    const nxt=br.tickets.find(t=>t.id===br.recState.ticketIds[ni]);
+    if(nxt)nxt.status='ACTIVE';
+  }else{
+    br.recState={active:false,ticketIds:[],curIdx:0,level:0};
+    toast('✓ RECOVERY '+BR_CFG[id].name+' COMPLETADO','g');
+  }
+}
+function regRecTrade(id,result){
+  const day=aDay();const br=b(id);
+  if(!day||!br.recState.active)return;
+  const tkId=br.recState.ticketIds[br.recState.curIdx];
+  const tk=br.tickets.find(t=>t.id===tkId);
+  const amount=MG_R[br.recState.level];
+  const py=br.payout/100;
+  const profit=result==='WIN'?+(amount*py).toFixed(2):result==='LOSS'?-amount:0;
+  const newCap=+(bCap(id)+profit).toFixed(2);
+  const trade={id:uid(),brokerId:id,dayId:G.activeDayId,sessionId:null,blockId:null,
+    tradeNum:br.trades.length+1,time:nowT(),date:todayD(),
+    asset:br.asset||'—',direction:G.direction,amount,payout:br.payout,
+    mgMode:'recovery',mgLevel:br.recState.level,result,profit,capitalAfter:newCap,ticketId:tkId,isRecovery:true};
+  br.trades.push(trade);
+  if(tk)tk.tradeIds.push(trade.id);
+  if(result==='WIN'){if(tk)tk.status='RESOLVED';advRec(id);}
+  else if(result==='LOSS'){
+    if(br.recState.level<2){br.recState.level++;if(tk)tk.level=br.recState.level;}
+    else{if(tk){tk.status='FAILED';tk.level=2;}advRec(id);}
+  }
+  persist();render();
+}
+
+// ─── SESSION ──────────────────────────────────────────────────────────────────
+function openSession(id){
+  const day=aDay();const br=b(id);
+  if(!br.enabled){toast(BR_CFG[id].name+' está DISABLED','am');return;}
+  if(!day||br.activeSessionId)return;
+  if(G.useRecoveryTickets&&br.recState.active){toast('Termina recovery en '+BR_CFG[id].name+' primero','am');return}
+  const ae=document.getElementById('sess-asset-'+id);
+  const asset=(ae?ae.value.trim().toUpperCase():br.asset)||br.asset||'';
+  const cap=bCap(id);
+  const dSess=br.sessions.filter(s=>s.dayId===G.activeDayId);
+  const sess={id:uid(),brokerId:id,dayId:G.activeDayId,num:dSess.length+1,date:todayD(),
+    status:'OPEN',openTime:nowT(),closeTime:null,capitalIni:cap,capitalFin:cap,blockIds:[],asset,payout:br.payout};
+  br.sessions.push(sess);br.activeSessionId=sess.id;if(asset)br.asset=asset;
+  persist();render();
+}
+function closeSession(id){
+  const br=b(id);const sess=bASess(id);if(!sess)return;
+  if(br.activeBlockId){toast('Cierra el bloque de '+BR_CFG[id].name+' primero','am');return}
+  sess.closeTime=nowT();sess.capitalFin=bCap(id);sess.status='CLOSED';br.activeSessionId=null;
+  persist();render();
+}
+
+// ─── BLOCK ────────────────────────────────────────────────────────────────────
+function openBlock(id){
+  const br=b(id);if(!br.enabled){toast(BR_CFG[id].name+' está DISABLED','am');return;}
+  const sess=bASess(id);if(!sess||br.activeBlockId)return;
+  const te=document.getElementById('blk-target-'+id);
+  const pTarget=parseFloat(te?te.value:20)||20;
+  const cap=bCap(id);
+  const sBlk=br.blocks.filter(bl=>bl.sessionId===br.activeSessionId);
+  const block={id:uid(),brokerId:id,sessionId:br.activeSessionId,dayId:G.activeDayId,
+    num:sBlk.length+1,openTime:nowT(),closeTime:null,capitalIni:cap,capitalFin:cap,
+    profit:0,roi:0,profitTarget:pTarget,status:'OPEN',tradeIds:[],cyclesCompleted:0,ticketsGenerated:[],cycleAccum:0};
+  br.blocks.push(block);sess.blockIds.push(block.id);br.activeBlockId=block.id;
+  br.blockMG={level:0,accLoss:0};persist();render();
+}
+function closeBlock(id){
+  const br=b(id);const block=bABlock(id);if(!block)return;
+  block.closeTime=nowT();block.capitalFin=bCap(id);
+  block.profit=+(block.capitalFin-block.capitalIni).toFixed(2);
+  block.roi=block.capitalIni?+(block.profit/block.capitalIni*100).toFixed(2):0;
+  block.status='CLOSED';br.activeBlockId=null;br.blockMG={level:0,accLoss:0};
+  const sess=bASess(id);if(sess)sess.capitalFin=bCap(id);
+  persist();render();
+}
+
+// ─── TRADE ────────────────────────────────────────────────────────────────────
+function regTrade(id,result){
+  const br=b(id);if(!br.enabled){toast(BR_CFG[id].name+' está DISABLED','am');return;}
+  const block=bABlock(id);if(!block)return;
+  const useRec=G.useRecoveryTickets;
+  const mgSeq=useRec?MG_N:MG_FULL;
+  const stEl=document.getElementById('stake-'+id);
+  const sugAmt=mgSeq[br.blockMG.level]||mgSeq[mgSeq.length-1];
+  const amount=parseFloat(stEl?stEl.value:sugAmt)||sugAmt;
+  const asEl=document.getElementById('asset-'+id);
+  const asset=(asEl?asEl.value.toUpperCase():br.asset)||br.asset||'—';
+  if(asset!=='—')br.asset=asset;
+  const py=br.payout/100;
+  const profit=result==='WIN'?+(amount*py).toFixed(2):result==='LOSS'?-amount:0;
+  const newCap=+(bCap(id)+profit).toFixed(2);
+  const mgMode=useRec?'normal':'full_martingale';
+  const trade={id:uid(),brokerId:id,dayId:G.activeDayId,sessionId:br.activeSessionId,blockId:br.activeBlockId,
+    tradeNum:block.tradeIds.length+1,time:nowT(),date:todayD(),
+    asset,direction:G.direction,amount,payout:br.payout,
+    mgMode,mgLevel:br.blockMG.level,result,profit,capitalAfter:newCap,ticketId:null,isRecovery:false};
+  br.trades.push(trade);block.tradeIds.push(trade.id);
+  block.capitalFin=newCap;block.profit=+(newCap-block.capitalIni).toFixed(2);
+  const sess=bASess(id);if(sess)sess.capitalFin=newCap;
+  if(result==='WIN'){
+    const cycleNet=+(amount*py-br.blockMG.accLoss).toFixed(2);
+    block.cycleAccum=+((block.cycleAccum||0)+cycleNet).toFixed(2);
+    block.cyclesCompleted++;br.blockMG={level:0,accLoss:0};
+  }else if(result==='LOSS'){
+    const nAcc=+(br.blockMG.accLoss+amount).toFixed(2);
+    const maxLevel=mgSeq.length-1;
+    if(br.blockMG.level<maxLevel){br.blockMG.level++;br.blockMG.accLoss=nAcc;}
+    else{
+      if(useRec){
+        // Generate recovery ticket
+        const tk={id:'TKT-'+String(br.tickets.length+1).padStart(3,'0'),num:br.tickets.length+1,
+          brokerId:id,originDate:todayD(),originDayId:G.activeDayId,originSessionId:br.activeSessionId,
+          originBlockId:br.activeBlockId,originTradeId:trade.id,accLoss:nAcc,
+          status:'PENDING',level:0,tradeIds:[],createdAt:nowT()};
+        br.tickets.push(tk);block.ticketsGenerated.push(tk.id);trade.ticketId=tk.id;
+        toast('⚠ '+tk.id+' generado en '+BR_CFG[id].name,'am');
+      }else{
+        // Full martingale: structural loss, reset to 0
+        toast('⚠ STRUCTURAL LOSS '+BR_CFG[id].name+' — secuencia reiniciada','re');
+      }
+      br.blockMG={level:0,accLoss:0};block.cyclesCompleted++;
+    }
+  }
+  // DRAW: no change to MG level
+  if((block.cycleAccum||0)>=block.profitTarget&&result!=='DRAW')
+    toast('✓ TARGET alcanzado en '+BR_CFG[id].name+' — Considera cerrar bloque','g');
+  if(stEl)stEl.value=mgSeq[br.blockMG.level]||mgSeq[mgSeq.length-1];
+  persist();render();
+}
+
+// ─── UI HELPERS ───────────────────────────────────────────────────────────────
+function setUseRecovery(val){
+  G.useRecoveryTickets=val;
+
+  // Si se desactiva, no se borran ni se modifican tickets existentes.
+  // Solo se evita crear nuevos tickets y se detiene el modo recovery automático.
+  if(!val){
+    BIDS.forEach(id=>{
+      BS[id].recState={active:false,ticketIds:[],curIdx:0,level:0};
+    });
+  }
+
+  persist();
+  render();
+  toast('Recovery Ticket System: '+(val?'ENABLED':'DISABLED'),val?'g':'am');
+}
+function setBrokerEnabled(id,val){
+  const br=BS[id];
+  if(!br)return;
+
+  br.enabled=val;
+
+  if(!val){
+    br.activeSessionId=null;
+    br.activeBlockId=null;
+    br.recState={active:false,ticketIds:[],curIdx:0,level:0};
+  }
+
+  persist();
+  render();
+
+  toast(BR_CFG[id].name+' '+(val?'ENABLED':'DISABLED'),val?'g':'am');
+}
+function setView(v){G._view=v;persist();render()}
+function setHistTab(t){G._histTab=t;persist();render()}
+function toggleTree(key){G._tree[key]=!G._tree[key];persist();render()}
+function setLF(k,v){G._lf[k]=v;persist();render()}
+
+let _tT=null;
+function toast(msg,type='g'){
+  const el=document.getElementById('toast');if(!el)return;
+  el.textContent=msg;el.style.display='block';
+  const c=type==='am'?'#e67e22':type==='re'?'#e74c3c':type==='go'?'#f1c40f':'#2ecc71';
+  el.style.borderLeftColor=c;el.style.color=c;
+  clearTimeout(_tT);_tT=setTimeout(()=>el.style.display='none',3800);
+}
+function confirmReset(){
+  if(!confirm('¿REINICIAR PERFIL COMPLETO? Irreversible.'))return;
+  Object.assign(G,{direction:'CALL',payoutDefault:92,dailyTarget:200,useRecoveryTickets:true,activeDayId:null,
+    days:[],capitalHistory:[],_view:'register',_histTab:'ledger',_lf:{broker:'ALL',result:'ALL',mode:'ALL'},_tree:{},_ready:true});
+  BS={b1:defBroker('b1'),b2:defBroker('b2'),b3:defBroker('b3')};
+  persist();safeRender();
+}
+
+// ─── RENDER: HEADER ───────────────────────────────────────────────────────────
+function rHeader(){
+  const day=aDay();const cap=totalCap();const pnl=totalPnl();
+  const anySess=BIDS.some(id=>BS[id].activeSessionId);
+  const anyRec=BIDS.some(id=>BS[id].recState.active);
+  let stHtml=anyRec?'<span class="am">RECOVERY</span>':anySess?'<span class="g">SESSION OPEN</span>':day?'<span class="go">STANDBY</span>':'<span class="d2">OFFLINE</span>';
+  const dL=day?'DAY '+day.num+' / '+day.date:'NO DAY';
+  const pName=_activeProfileId?getProfileName(_activeProfileId):'—';
+  return`<div class="profile-bar">
+    <span><span class="profile-bar-label">ACTIVE PROFILE:</span><span class="profile-bar-name">${pName.toUpperCase()}</span></span>
+    <span class="d2" style="font-size:8px;cursor:pointer" onclick="showProfileOverlay()">[ SWITCH PROFILE ]</span>
+  </div>
+  <div class="hdr">
+    <div><div class="hdr-brand">JORMUNDGANDRSSON</div>
+      <div class="hdr-sub">${dL} &nbsp;&nbsp; STATUS: ${stHtml}</div></div>
+    <div style="display:flex;gap:18px;align-items:center">
+      <div><div class="hdr-stat-label">CAPITAL TOTAL</div><div class="go hdr-stat-val">${fmt(cap)}</div></div>
+      <div><div class="hdr-stat-label">P&L TOTAL</div><div class="${pnl>=0?'g':'re'} hdr-stat-val">${fmtS(pnl)}</div></div>
+      <div style="display:flex;gap:4px">
+        <button class="btn btn-go btn-sm" onclick="exportXLSX()">↓ XLSX</button>
+        <button class="btn btn-sm" style="color:#222;border-color:#181818" onclick="confirmReset()">✕</button>
+      </div>
+    </div>
+  </div>`;}
+
+
+// ─── RENDER: NAV ─────────────────────────────────────────────────────────────
+function rNav(){
+  return`<div class="nav">
+    <div class="nav-tab ${G._view==='register'?'active':''}" onclick="setView('register')">REGISTER</div>
+    <div class="nav-tab ${G._view==='history'?'active':''}" onclick="setView('history')">HISTORY</div>
+    <div class="nav-tab ${G._view==='settings'?'active':''}" onclick="setView('settings')">SETTINGS</div>
+    <div class="nav-tab" onclick="showProfileOverlay()" style="margin-left:auto;color:#f1c40f44">⚙ PROFILES</div>
+  </div>`;
+}
+
+// ─── RENDER: GLOBAL CONTROL ───────────────────────────────────────────────────
+function rGlobalControl(){
+  const day=aDay();
+  const dayPnl=day?+(totalCap()-day.capitalStart).toFixed(2):0;
+  const prog=G.dailyTarget>0?Math.max(0,dayPnl/G.dailyTarget*100):0;
+  const pCl=prog>=100?'#2ecc71':prog>=50?'#f1c40f':'#e67e22';
+  const anySess=BIDS.some(id=>BS[id].activeSessionId);
+  const statusBadge=anySess?'<span class="badge bopen">OPEN</span>':'<span class="badge bclosed">CLOSED</span>';
+  return`<div class="gc-bar">
+    <div class="gc-section">
+      <div class="gc-label">DIRECTION (GLOBAL)</div>
+      <div style="display:flex;gap:4px;margin-top:3px">
+        <button class="dir-btn${G.direction==='CALL'?' dir-call':''}" data-dir="CALL" onclick="setDir('CALL')">▲ CALL</button>
+        <button class="dir-btn${G.direction==='PUT'?' dir-put':''}" data-dir="PUT" onclick="setDir('PUT')">▼ PUT</button>
+      </div>
+    </div>
+    <div class="gc-sep"></div>
+    <div class="gc-section">
+      <div class="gc-label">PAYOUT DEFAULT</div>
+      <div style="display:flex;align-items:center;gap:4px;margin-top:3px">
+        <input type="number" id="inp-payout-default" value="${G.payoutDefault}" step="1" min="50" max="100" style="width:46px;height:26px;font-size:11px" onchange="G.payoutDefault=parseInt(this.value);persist()">
+        <span class="d2">%</span>
+      </div>
+    </div>
+    <div class="gc-sep"></div>
+    <div class="gc-section">
+      <div class="gc-label">DAILY TARGET</div>
+      <div style="margin-top:3px">
+        ${!day?`<input type="number" id="inp-daily-target" value="${G.dailyTarget}" step="1" style="width:70px;height:26px;font-size:11px">`
+              :`<span style="font-size:11px;color:#fff">${fmt(G.dailyTarget)}</span>`}
+      </div>
+    </div>
+    <div class="gc-sep"></div>
+    <div class="gc-section">
+      <div class="gc-label">OPEN DAY</div>
+      <div style="margin-top:3px">
+        ${!day?`<button class="btn btn-g btn-sm" onclick="openDay()">▶ OPEN DAY ${G.days.length+1}</button>`
+              :`<span style="font-size:11px;color:#fff">${day.date}</span>`}
+      </div>
+    </div>
+    <div class="gc-sep"></div>
+    <div class="gc-section">
+      <div class="gc-label">CLOSE DAY</div>
+      <div style="margin-top:3px">
+        ${day&&!anySess?`<button class="btn btn-r btn-sm" onclick="closeDay()">■ CLOSE DAY</button>`
+                       :`<span style="font-size:11px;color:#333">---</span>`}
+      </div>
+    </div>
+    <div class="gc-sep"></div>
+    <div class="gc-section" style="flex:1;min-width:120px">
+      <div class="gc-label">PROGRESS &nbsp;<span style="color:${pCl}">${prog.toFixed(1)}%</span></div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:5px">
+        <div style="flex:1;height:3px;background:#181818;border-radius:1px">
+          <div style="width:${Math.min(100,prog).toFixed(1)}%;height:100%;background:${pCl}"></div>
+        </div>
+      </div>
+    </div>
+    <div class="gc-sep"></div>
+    <div class="gc-section">
+      <div class="gc-label">SESSION STATUS</div>
+      <div style="margin-top:3px">${statusBadge}</div>
+    </div>
+  </div>`;
+}
+
+// ─── RENDER: BROKER CARD ──────────────────────────────────────────────────────
+function rBrokerCard(id){
+  const br=b(id);const cfg=BR_CFG[id];const day=aDay();
+  const sess=bASess(id);const block=bABlock(id);
+  const cap=bCap(id);
+  const capDisplay=br.enabled?fmt(cap):'--.--';
+  const sessPnl=sess?+(cap-sess.capitalIni).toFixed(2):0;
+  const mgLvl=br.blockMG.level;
+  const recActive=br.recState.active; // intentional: manual reactivation must work even when useRecoveryTickets===false
+  const mgSeq=G.useRecoveryTickets?MG_N:MG_FULL;
+  const sugStake=mgSeq[Math.min(mgLvl,mgSeq.length-1)];
+  const ca=block?+(block.cycleAccum||0).toFixed(2):0;
+  const blockPnl=block?block.profit:0;
+  const blockRoi=block&&block.capitalIni?+(blockPnl/block.capitalIni*100).toFixed(2):0;
+  const pendCount=bPendTkts(id).length;
+
+  // ── Header block control
+  let blockCtrl='';
+  if(!day) blockCtrl=`<span class="d2" style="font-size:9px">NO DAY</span>`;
+  else if(recActive) blockCtrl=`<span class="badge bpend">RECOVERY ACTIVE</span>`;
+  else if(!sess) blockCtrl=`<button class="btn btn-sm" style="border-color:${cfg.border};color:${cfg.color};font-size:9px" onclick="openSession('${id}')">▶ OPEN SESSION</button>`;
+  else if(block) blockCtrl=`<span class="badge bopen" style="font-size:8px">BLOCK OPEN</span> <button class="btn btn-r btn-sm" style="font-size:9px" onclick="closeBlock('${id}')">CLOSE BLOCK</button>`;
+  else blockCtrl=`<span class="badge bclosed" style="font-size:8px">BLOCK CLOSED</span> <button class="btn btn-sm" style="border-color:${cfg.border};color:${cfg.color};font-size:9px" onclick="openBlock('${id}')">▶ OPEN BLOCK</button>`;
+
+  // ── OPERATIVA
+  const opSection=`
+    <div class="br-section-title">OPERATIVA</div>
+    <div class="br-op-grid">
+      <div><div class="br-label">ASSET</div>
+        <input id="asset-${id}" value="${br.asset}" placeholder="EUR/USD..." style="height:26px;font-size:10px;text-transform:uppercase" oninput="BS['${id}'].asset=this.value.toUpperCase()"></div>
+      <div><div class="br-label">STAKE ACTUAL</div>
+        <div style="display:flex;align-items:center;gap:2px">
+          <span class="d2" style="flex-shrink:0">$</span>
+          <input id="stake-${id}" type="number" step="0.01" min="0.01" value="${block?sugStake:1}" style="height:26px;font-size:10px"></div></div>
+      <div><div class="br-label">PAYOUT %</div>
+        <input type="number" id="payout-${id}" value="${br.payout}" step="1" min="50" max="100" style="height:26px;font-size:10px" onchange="BS['${id}'].payout=parseInt(this.value);persist()"></div>
+    </div>
+    <div class="br-op-row" style="margin-top:6px">
+      <div><div class="br-label">BALANCE</div><div style="font-size:13px;font-weight:500;color:${cfg.color}">${capDisplay}</div></div>
+      <div><div class="br-label">P&L SESIÓN</div><div class="${sessPnl>=0?'g':'re'}" style="font-size:13px;font-weight:500">${sess?fmtS(sessPnl):'—'}</div></div>
+      <div><div class="br-label">MG LEVEL</div><div style="font-size:13px">${mgLvl+1} / 7</div></div>
+    </div>`;
+
+  // ── BLOCK INFO
+  const blockSection=sess?`
+    <div class="br-section-title" style="margin-top:7px">BLOCK INFO</div>
+    ${block&&ca>=block.profitTarget?`<div class="close-sug">✓ CYCLE GAINS +$${ca.toFixed(2)} ≥ $${block.profitTarget.toFixed(2)} — Considera cerrar</div>`:''}
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;font-size:10px">
+      <div><div class="br-label">TARGET</div><div>${block?fmt(block.profitTarget):'—'}</div></div>
+      <div><div class="br-label">P&L BLOQUE</div><div class="${blockPnl>=0?'g':'re'}">${block?fmtS(blockPnl):'—'}</div></div>
+      <div><div class="br-label">ROI</div><div class="${blockRoi>=0?'g':'re'}">${block?fmtP(blockRoi):'—'}</div></div>
+      <div><div class="br-label">CYCLES</div><div>${block?block.cyclesCompleted:'—'}</div></div>
+      <div><div class="br-label">TKTS GEN</div><div class="${pendCount?'am':''}">${block?block.ticketsGenerated.length:pendCount||'—'}</div></div>
+      <div><div class="br-label">CYCLE GAINS</div><div class="${ca>=(block?block.profitTarget:99)?'g':ca>0?'go':'d2'}">${block?'+$'+ca.toFixed(2):'—'}</div></div>
+    </div>`:'';
+
+  // ── MG BAR
+  const mgBar=G.useRecoveryTickets?`
+    <div class="br-section-title" style="margin-top:7px">MARTINGALE SEQUENCE <span class="d2" style="font-size:7px;letter-spacing:0">NORMAL: 1-2-5-11 &nbsp;|&nbsp; RECOVERY: 23-50-104</span></div>
+    <div class="mg-row">
+      ${MG_N.map((v,i)=>{
+        let cls='mg-n';
+        if(block&&!recActive){if(i<mgLvl)cls+=' done';else if(i===mgLvl)cls+=' cur';}
+        const isAct=block&&!recActive&&i===mgLvl;
+        return`<div class="${cls}">${isAct?`<span class="mg-sub" style="color:#2ecc71">ACTUAL</span>`:''}$${v}</div>${i<3?'<span class="mg-sep">›</span>':''}`;
+      }).join('')}
+      <span class="mg-wall">|</span>
+      ${MG_R.map((v,i)=>{
+        let cls='mg-n rpend';
+        if(recActive){if(i<br.recState.level)cls='mg-n rdone';else if(i===br.recState.level)cls='mg-n rcur';}
+        const isAct=recActive&&i===br.recState.level;
+        return`<div class="${cls}">${isAct?`<span class="mg-sub" style="color:#e67e22">ACTUAL</span>`:''}$${v}</div>${i<2?'<span class="mg-sep">›</span>':''}`;
+      }).join('')}
+    </div>`
+  :`
+    <div class="br-section-title" style="margin-top:7px">FULL MARTINGALE <span class="d2" style="font-size:7px;letter-spacing:0">1→2→5→11→23→50→104</span></div>
+    <div class="mg-row">
+      ${MG_FULL.map((v,i)=>{
+        let cls='mg-n';
+        if(block){if(i<mgLvl)cls+=' done';else if(i===mgLvl)cls+=' cur';}
+        const isAct=block&&i===mgLvl;
+        return`<div class="${cls}">${isAct?`<span class="mg-sub" style="color:#2ecc71">ACT</span>`:''}$${v}</div>${i<6?'<span class="mg-sep">›</span>':''}`;
+      }).join('')}
+    </div>`;
+
+  // ── BOTONES
+  let buttons='';
+  if(recActive){
+    const tkId=br.recState.ticketIds[br.recState.curIdx];
+    const tk=br.tickets.find(t=>t.id===tkId);
+    const assetEl=`<div style="margin-bottom:5px"><div class="br-label">ASSET</div>
+      <input style="height:26px;font-size:10px;text-transform:uppercase" value="${br.asset}" placeholder="EUR/USD..." oninput="BS['${id}'].asset=this.value.toUpperCase()"></div>`;
+    buttons=`
+      <div class="br-section-title" style="margin-top:7px;color:#e67e22;border-color:#3a1000">RECOVERY — ${tkId||'?'} (${br.recState.curIdx+1}/${br.recState.ticketIds.length})</div>
+      <div style="font-size:10px;margin-bottom:5px">Nivel: <span class="am" style="font-size:12px">$${MG_R[br.recState.level]}</span> &nbsp;|&nbsp; Loss acum: <span class="re">${tk?'-$'+Math.abs(tk.accLoss).toFixed(2):'—'}</span></div>
+      ${assetEl}
+      <div class="res-row">
+        <button class="res-btn res-win" onclick="regRecTrade('${id}','WIN')">▲ WIN</button>
+        <button class="res-btn res-loss" onclick="regRecTrade('${id}','LOSS')">▼ LOSS</button>
+        <button class="res-btn res-draw" onclick="regRecTrade('${id}','DRAW')">= DRAW</button>
+      </div>`;
+  }else if(block){
+    buttons=`
+      <div class="br-section-title" style="margin-top:7px">BOTONES</div>
+      <div class="res-row">
+        <button class="res-btn res-win" onclick="regTrade('${id}','WIN')">▲ WIN</button>
+        <button class="res-btn res-loss" onclick="regTrade('${id}','LOSS')">▼ LOSS</button>
+        <button class="res-btn res-draw" onclick="regTrade('${id}','DRAW')">= DRAW</button>
+      </div>`;
+  }else if(sess){
+    buttons=`
+      <div class="br-section-title" style="margin-top:7px">OPEN BLOCK</div>
+      <div style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap;margin-bottom:4px">
+        <div style="min-width:90px"><div class="br-label">BLOCK TARGET ($)</div>
+          <input id="blk-target-${id}" type="number" value="20" step="0.01" style="height:26px;font-size:10px"></div>
+        <button class="btn btn-sm" style="border-color:${cfg.border};color:${cfg.color};height:26px" onclick="openBlock('${id}')">▶ OPEN BLOCK</button>
+        <button class="btn btn-r btn-sm" style="height:26px" onclick="closeSession('${id}')">■ CLOSE SESSION</button>
+      </div>`;
+  }else if(day){
+    buttons=`
+      <div class="br-section-title" style="margin-top:7px">OPEN SESSION</div>
+      <div style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap;margin-bottom:4px">
+        <div style="flex:1;min-width:100px"><div class="br-label">ASSET DE SESIÓN</div>
+          <input id="sess-asset-${id}" value="${br.asset}" placeholder="EUR/USD..." style="height:26px;font-size:10px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"></div>
+        <button class="btn btn-sm" style="border-color:${cfg.border};color:${cfg.color};height:26px" onclick="openSession('${id}')">▶ OPEN SESSION</button>
+      </div>`;
+  }
+
+  // ── REGISTRO
+  const brTrades=br.trades.filter(t=>!t.isRecovery).slice(-5).reverse();
+  const logSection=`
+    <div class="br-section-title" style="margin-top:7px">REGISTRO (ÚLTIMOS TRADES)</div>
+    ${brTrades.length?`<div style="overflow-x:auto"><table class="tbl">
+      <thead><tr><th>#</th><th>HORA</th><th>ASSET</th><th>DIR</th><th>STAKE</th><th>PAY</th><th>RES</th><th>P&L</th><th>BALANCE</th><th>MG</th></tr></thead>
+      <tbody>${brTrades.map(t=>{
+        const pc=t.profit>0?'g':t.profit<0?'re':'go';
+        return`<tr>
+          <td class="d2">${t.tradeNum}</td>
+          <td class="d2">${t.time}</td>
+          <td>${t.asset||'—'}</td>
+          <td><span class="badge b${t.direction.toLowerCase()}">${t.direction}</span></td>
+          <td>$${t.amount.toFixed(2)}</td>
+          <td>${t.payout}%</td>
+          <td><span class="badge b${t.result.toLowerCase()}">${t.result}</span></td>
+          <td class="${pc}">${t.profit===0?'$0.00':fmtS(t.profit)}</td>
+          <td>${fmt(t.capitalAfter)}</td>
+          <td class="d2">${t.mgLevel+1}</td></tr>`;
+      }).join('')}</tbody></table></div>`
+    :`<div style="font-size:10px;color:#333">Sin trades recientes.</div>`}
+    <div style="text-align:center;margin-top:6px">
+      <button class="btn btn-sm" style="font-size:9px;color:#444;border-color:#1a1a1a" onclick="setView('history')">VER HISTORIAL COMPLETO</button>
+    </div>`;
+
+  return`<div class="br-card" style="border-top-color:${cfg.color}">
+    <div class="br-header">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="width:8px;height:8px;border-radius:50%;background:${cfg.color};display:inline-block;flex-shrink:0"></span>
+        <span style="font-weight:600;letter-spacing:1px;color:${cfg.color};font-size:11px">${cfg.name}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+        ${blockCtrl}
+        <span class="badge" style="border-color:${br.enabled?cfg.border:'#222'};color:${br.enabled?cfg.color:'#444'};font-size:8px">${br.enabled?cfg.label:'DISABLED'}</span>
+      </div>
+    </div>
+    <div class="br-body">
+      ${opSection}
+      ${blockSection}
+      ${mgBar}
+      ${buttons}
+      ${logSection}
+    </div>
+  </div>`;
+}
+
+// ─── RENDER: SIDEBAR ─────────────────────────────────────────────────────────
+function rSidebar(){
+  const cap=totalCap();const ini=totalIni();
+  const pnl=totalPnl();const pnlPct=ini?+(pnl/ini*100).toFixed(2):0;
+  const hPct=Math.min(100,Math.max(0,cap/ini*100));
+  const hCl=hPct>90?'#2ecc71':hPct>70?'#e67e22':'#e74c3c';
+  const cl=allTrades().filter(t=>t.result==='WIN'||t.result==='LOSS');
+  const wins=cl.filter(t=>t.result==='WIN').length;
+  const wr=cl.length?wins/cl.length*100:null;
+  const allSessions=BIDS.flatMap(id=>b(id).sessions);
+  const allBlocks=BIDS.flatMap(id=>b(id).blocks);
+  const tkts=allTkts();
+  const pend=tkts.filter(t=>t.status==='PENDING').length;
+  const failed=tkts.filter(t=>t.status==='FAILED').length;
+  const activeTkts=BIDS.flatMap(id=>b(id).tickets.filter(t=>t.status==='ACTIVE'||t.status==='PENDING')).slice(0,6);
+  return`
+  <div class="panel">
+    <div class="ptitle">CAPITAL HEALTH</div>
+    <div style="margin-bottom:8px">
+      <div class="stat-label">CAPITAL ACTUAL</div>
+      <div class="stat-val ${pnl>=0?'g':'re'}">${fmt(cap)}</div>
+      <div class="hbar"><div class="hfill" style="width:${hPct.toFixed(1)}%;background:${hCl}"></div></div>
+      <div class="stat-sub">${hPct.toFixed(1)}% · base ${fmt(ini)}</div>
+    </div>
+    <div class="mini-row"><span class="d2">P&L TOTAL</span><span class="${pnl>=0?'g':'re'}">${fmtS(pnl)}</span></div>
+    <div class="mini-row"><span class="d2">P&L %</span><span class="${pnlPct>=0?'g':'re'}">${fmtP(pnlPct)}</span></div>
+    <div class="mini-row"><span class="d2">WIN RATE</span><span class="${wr!==null&&wr>=50?'g':'re'}">${wr!==null?wr.toFixed(0)+'%':'—'}</span></div>
+    <div class="mini-row"><span class="d2">W / L / T</span><span>${wins}W·${cl.length-wins}L·${allTrades().length}T</span></div>
+    <div style="border-top:1px solid #141414;margin:5px 0"></div>
+    <div class="mini-row"><span class="d2">DÍAS</span><span>${G.days.length}</span></div>
+    <div class="mini-row"><span class="d2">SESIONES</span><span>${allSessions.length}</span></div>
+    <div class="mini-row"><span class="d2">BLOQUES</span><span>${allBlocks.length}</span></div>
+    <div class="mini-row"><span class="d2">TKTS PEND</span><span class="${pend?'am':'d2'}">${pend}</span></div>
+    <div class="mini-row"><span class="d2">P. ESTRUCT.</span><span class="${failed?'re':'d2'}">${failed}</span></div>
+  </div>
+  <div class="panel">
+    <div class="ptitle">RECOVERY TICKETS (${activeTkts.length})</div>
+    ${activeTkts.length?activeTkts.map(t=>{
+      const bcfg=BR_CFG[t.brokerId]||{color:'#888',border:'#333'};
+      const br2=b(t.brokerId);
+      const curLvl=t.status==='ACTIVE'?br2.recState.level:t.level;
+      const nxt=MG_R[Math.min(curLvl,2)];
+      const nxtN=MG_R[Math.min(curLvl+1,2)];
+      return`<div class="tkt tkt-${t.status}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+          <span style="color:${bcfg.color};font-size:9px;font-weight:600">${t.id}</span>
+          <span class="badge b${t.status==='PENDING'?'pend':'act'}">${t.status}</span>
+        </div>
+        <div style="font-size:9px;color:#555;margin-bottom:3px">${t.originDate} · Loss: <span class="re">$${Math.abs(t.accLoss).toFixed(2)}</span></div>
+        <div style="font-size:9px;display:flex;gap:8px;flex-wrap:wrap">
+          <span>STK: <span class="am">$${nxt}</span></span>
+          <span class="d2">NEXT: $${nxtN}</span>
+          <span class="d2">LVL: ${curLvl+1}/7</span>
+        </div>
+      </div>`;
+    }).join(''):`<div style="font-size:10px;color:#333">Sin tickets activos.</div>`}
+  </div>`;
+}
+
+// ─── RENDER: DAILY TARGET ────────────────────────────────────────────────────
+function rDailyTarget(){
+  const day=aDay();
+  const dayPnl=day?+(totalCap()-day.capitalStart).toFixed(2):0;
+  const prog=G.dailyTarget>0?dayPnl/G.dailyTarget*100:0;
+  const pCl=prog>=100?'#2ecc71':prog>=50?'#f1c40f':'#e67e22';
+  const sugg=prog>=100?'<span class="g">CERRAR DÍA</span>':prog>=50?'<span class="go">CONTINUAR</span>':'<span class="am">OPERAR</span>';
+  const perB=+(G.dailyTarget/3).toFixed(2);
+  const now=new Date();
+  const ts=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0')+':'+now.getSeconds().toString().padStart(2,'0');
+  return`
+  <div class="daily-bar">
+    <div class="daily-section">
+      <div class="gc-label">DAILY TARGET (GLOBAL)</div>
+      <div style="font-size:13px;font-weight:500;margin-top:2px">${fmt(G.dailyTarget)}</div>
+    </div>
+    <div class="daily-section" style="flex:1;min-width:100px">
+      <div class="gc-label">PROGRESO &nbsp;<span style="color:${pCl}">${Math.max(0,prog).toFixed(1)}%</span></div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+        <div style="flex:1;height:3px;background:#181818">
+          <div style="width:${Math.min(100,Math.max(0,prog)).toFixed(1)}%;height:100%;background:${pCl}"></div>
+        </div>
+      </div>
+    </div>
+    <div class="daily-section">
+      <div class="gc-label">P&L DEL DÍA</div>
+      <div class="${dayPnl>=0?'g':'re'}" style="font-size:13px;margin-top:2px">${fmtS(dayPnl)}</div>
+    </div>
+    <div class="daily-section">
+      <div class="gc-label">SUGERENCIA</div>
+      <div style="font-size:11px;margin-top:2px">${sugg}</div>
+    </div>
+    <div class="daily-section">
+      <div class="gc-label">META POR BROKER</div>
+      <div style="font-size:10px;margin-top:2px;display:flex;gap:8px">
+        <span class="bl">B1: ${fmt(perB)}</span>
+        <span class="g">B2: ${fmt(perB)}</span>
+        <span class="am">B3: ${fmt(+(G.dailyTarget-perB*2).toFixed(2))}</span>
+      </div>
+    </div>
+    <div class="daily-section">
+      <div class="gc-label">HORA ACTUAL</div>
+      <div style="font-size:11px;margin-top:2px" id="clock">${ts}</div>
+    </div>
+  </div>
+  <div class="broker-targets">
+    ${BIDS.map((id,i)=>{
+      const cfg=BR_CFG[id];const br=b(id);const cap=bCap(id);
+      const bIni=br.initialCapital||br.capital;
+      const bPnl=day?+(cap-bIni).toFixed(2):0;
+      const bProg=br.dailyTarget>0?bPnl/br.dailyTarget*100:0;
+      const bCl=bProg>=100?'#2ecc71':bProg>=50?'#f1c40f':'#e67e22';
+      const bRoi=bIni?+(bPnl/bIni*100).toFixed(2):0;
+      return`<div class="bt-cell">
+        <div class="gc-label" style="color:${cfg.color};margin-bottom:3px">${cfg.name} TARGET</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:10px">
+          <span class="d2">TARGET: <span style="color:#fff">${fmt(br.dailyTarget)}</span></span>
+          <span>PROGRESO: <span style="color:${bCl}">${bProg.toFixed(1)}%</span></span>
+          <div style="width:50px;height:2px;background:#181818"><div style="width:${Math.min(100,Math.max(0,bProg)).toFixed(1)}%;height:100%;background:${bCl}"></div></div>
+          <span class="${bPnl>=0?'g':'re'}">P&L: ${fmtS(bPnl)}</span>
+          <span class="${bRoi>=0?'g':'re'}">ROI: ${fmtP(bRoi)}</span>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ─── RENDER: HISTORY ─────────────────────────────────────────────────────────
+function rHistory(){
+  const cap=totalCap();const ini=totalIni();const pnl=totalPnl();
+  const pnlPct=ini?+(pnl/ini*100).toFixed(2):0;
+  const day=aDay();const dayPnl=day?+(cap-day.capitalStart).toFixed(2):0;
+  const prog=G.dailyTarget>0?dayPnl/G.dailyTarget*100:0;
+  const cl=allTrades().filter(t=>t.result==='WIN'||t.result==='LOSS');
+  const wins=cl.filter(t=>t.result==='WIN').length;
+  const wr=cl.length?wins/cl.length*100:null;
+  const tkts=allTkts();const pend=tkts.filter(t=>t.status==='PENDING').length;
+  const allSess=BIDS.flatMap(id=>b(id).sessions);
+  const allBlks=BIDS.flatMap(id=>b(id).blocks);
+
+  // Global summary cards
+  const gcards=[
+    ['CAPITAL TOTAL',fmt(cap),`P&L: ${fmtS(pnl)} (${fmtP(pnlPct)})`,pnl>=0?'g':'re'],
+    ['WIN RATE',wr!==null?wr.toFixed(0)+'%':'—',`${wins}W · ${cl.length-wins}L · ${cl.length}`,wr!==null&&wr>=50?'g':'re'],
+    ['PROGRESO META',prog.toFixed(1)+'%',`Meta: ${fmt(G.dailyTarget)}`,prog>=100?'g':prog>=50?'go':'am'],
+    ['SESIONES',allSess.length,`${G.days.length} días`,''],
+    ['BLOQUES',allBlks.length,`${allBlks.filter(bl=>bl.status==='CLOSED').length} cerrados`,''],
+    ['TICKETS',tkts.length,`${pend} PEND · ${tkts.filter(t=>t.status==='FAILED').length} FAIL`,pend?'am':''],
+  ];
+
+  // History tabs
+  const tabs=[['ledger','TRADE LEDGER'],['tree','TREE VIEW'],['sessions','SESIONES'],['blocks','BLOQUES'],['tickets','TICKETS']];
+
+  // ── TRADE LEDGER
+  let lf=G._lf||{broker:'ALL',result:'ALL',mode:'ALL'};
+  let filtered=allTrades();
+  if(lf.broker!=='ALL')filtered=filtered.filter(t=>t.brokerId===lf.broker);
+  if(lf.result!=='ALL')filtered=filtered.filter(t=>t.result===lf.result);
+  if(lf.mode!=='ALL'){
+  filtered=filtered.filter(t=>{
+    if(lf.mode==='REC') return t.isRecovery || t.mgMode==='recovery';
+    if(lf.mode==='FULL') return t.mgMode==='full_martingale';
+    if(lf.mode==='NORM') return !t.isRecovery && t.mgMode!=='full_martingale';
+    return true;
+  });
+}
+  const ledger=filtered.slice().reverse();
+
+  const ledgerHtml=`
+    <div class="filter-bar">
+      <span class="d2" style="font-size:9px">FILTRAR:</span>
+      <select onchange="setLF('broker',this.value)" style="width:100px">
+        <option value="ALL" ${lf.broker==='ALL'?'selected':''}>TODOS</option>
+        ${BIDS.map(id=>`<option value="${id}" ${lf.broker===id?'selected':''}>${BR_CFG[id].name}</option>`).join('')}
+      </select>
+      <select onchange="setLF('result',this.value)" style="width:80px">
+        <option value="ALL" ${lf.result==='ALL'?'selected':''}>TODOS</option>
+        <option value="WIN" ${lf.result==='WIN'?'selected':''}>WIN</option>
+        <option value="LOSS" ${lf.result==='LOSS'?'selected':''}>LOSS</option>
+        <option value="DRAW" ${lf.result==='DRAW'?'selected':''}>DRAW</option>
+      </select>
+      <select onchange="setLF('mode',this.value)" style="width:90px">
+        <option value="ALL" ${lf.mode==='ALL'?'selected':''}>TODO MODO</option>
+        <option value="NORM" ${lf.mode==='NORM'?'selected':''}>NORMAL</option>
+        <option value="REC" ${lf.mode==='REC'?'selected':''}>RECOVERY</option>
+        <option value="FULL" ${lf.mode==='FULL'?'selected':''}>FULL MG</option>
+      </select>
+      <span class="d2" style="font-size:9px">${ledger.length} trades</span>
+    </div>
+    ${ledger.length?`<div style="overflow-x:auto"><table class="tbl">
+      <thead><tr>
+        <th>#</th><th>BROKER</th><th>FECHA</th><th>HORA</th><th>DÍA</th><th>SESS</th><th>BLOQUE</th>
+        <th>ASSET</th><th>DIR</th><th>STAKE</th><th>PAY</th><th>RES</th>
+        <th>P&L TRADE</th><th>CAPITAL</th><th>MG LVL</th><th>MODO</th><th>TICKET</th>
+      </tr></thead>
+      <tbody>${ledger.map(t=>{
+        const cfg=BR_CFG[t.brokerId]||{color:'#888',name:'?'};
+        const br2=b(t.brokerId);
+        const sess2=br2.sessions.find(s=>s.id===t.sessionId);
+        const blk2=br2.blocks.find(bl=>bl.id===t.blockId);
+        const dayN=G.days.find(d=>d.id===t.dayId);
+        const pc=t.profit>0?'g':t.profit<0?'re':'go';
+        const lvLbl=t.mgMode==='recovery'?`REC L${t.mgLevel+1} $${MG_R[t.mgLevel]}`:t.mgMode==='full_martingale'?`FM L${t.mgLevel+1} $${MG_FULL[t.mgLevel]}`:`N${t.mgLevel+1} $${MG_N[t.mgLevel]}`;
+        const tp=t.result==='WIN'?`+$${(t.amount*(t.payout/100)).toFixed(2)}`:t.result==='LOSS'?`-$${t.amount.toFixed(2)}`:'$0.00';
+        return`<tr>
+          <td class="d2">${t.tradeNum}</td>
+          <td><span style="color:${cfg.color};font-size:9px">${cfg.name}</span></td>
+          <td class="d2">${t.date||''}</td>
+          <td class="d2">${t.time}</td>
+          <td class="d2">${dayN?'D'+dayN.num:'REC'}</td>
+          <td class="d2">${sess2?'S'+sess2.num:'—'}</td>
+          <td class="d2">${blk2?'B'+blk2.num:t.isRecovery?'REC':'—'}</td>
+          <td>${t.asset||'—'}</td>
+          <td><span class="badge b${(t.direction||'').toLowerCase()}">${t.direction||'—'}</span></td>
+          <td>$${t.amount.toFixed(2)}</td>
+          <td>${t.payout}%</td>
+          <td><span class="badge b${t.result.toLowerCase()}">${t.result}</span></td>
+          <td class="${pc}" style="font-weight:500">${tp}</td>
+          <td>${fmt(t.capitalAfter)}</td>
+          <td class="d2">${lvLbl}</td>
+          <td class="${t.isRecovery?'am':t.mgMode==='full_martingale'?'go':'d2'}">${t.mgMode==='full_martingale'?'FULL_MG':t.mgMode.toUpperCase()}</td>
+          <td class="d2">${t.ticketId||'—'}</td>
+        </tr>`;
+      }).join('')}</tbody></table></div>`
+    :`<div style="font-size:10px;color:#333;padding:8px">Sin trades con estos filtros.</div>`}`;
+
+  // ── TREE VIEW (DAY→SESSION→BLOCK→TRADES)
+  const treeHtml=G.days.length?G.days.slice().reverse().map(day=>{
+    const dk='d_'+day.id;const dOpen=G._tree[dk];
+    const dSess=BIDS.flatMap(id=>b(id).sessions.filter(s=>s.dayId===day.id));
+    const dPnl=day.capitalEnd?+(day.capitalEnd-day.capitalStart).toFixed(2):0;
+    return`<div class="tree-day">
+      <div class="tree-day-hdr" onclick="toggleTree('${dk}')">
+        <span style="color:#444">${dOpen?'▾':'▸'}</span>
+        <span class="go" style="font-weight:600">DAY ${day.num}</span>
+        <span class="d2">${day.date}</span>
+        <span class="badge b${day.status==='OPEN'?'open':'closed'}">${day.status}</span>
+        <span class="${dPnl>=0?'g':'re'}">${fmtS(dPnl)}</span>
+        <span class="d2" style="font-size:9px">${dSess.length} sessions</span>
+      </div>
+      ${dOpen?dSess.map(sess=>{
+        const sk='s_'+sess.id;const sOpen=G._tree[sk];
+        const cfg=BR_CFG[sess.brokerId]||{color:'#888',name:'?'};
+        const sPnl=+(sess.capitalFin-sess.capitalIni).toFixed(2);
+        const sBlks=b(sess.brokerId).blocks.filter(bl=>bl.sessionId===sess.id);
+        return`<div class="tree-sess">
+          <div class="tree-sess-hdr" onclick="toggleTree('${sk}')">
+            <span style="color:#444">${sOpen?'▾':'▸'}</span>
+            <span style="color:${cfg.color};font-size:9px">${cfg.name}</span>
+            <span class="d2">S${sess.num}</span>
+            <span class="badge b${sess.status==='OPEN'?'open':'closed'}">${sess.status}</span>
+            <span class="${sPnl>=0?'g':'re'}">${fmtS(sPnl)}</span>
+            <span class="d2" style="font-size:9px">${sess.openTime}${sess.closeTime?' → '+sess.closeTime:''}</span>
+            <span class="d2" style="font-size:9px">${sBlks.length} bloques</span>
+          </div>
+          ${sOpen?sBlks.map(bl=>{
+            const bk='b_'+bl.id;const bOpen=G._tree[bk];
+            const blTs=bBTrades(sess.brokerId,bl.id);
+            return`<div class="tree-blk">
+              <div class="tree-blk-hdr" onclick="toggleTree('${bk}')">
+                <span style="color:#333">${bOpen?'▾':'▸'}</span>
+                <span>B${bl.num}</span>
+                <span class="badge b${bl.status==='OPEN'?'open':'closed'}">${bl.status}</span>
+                <span class="${bl.profit>=0?'g':'re'}">${fmtS(bl.profit)}</span>
+                <span class="d2" style="font-size:9px">ROI: ${fmtP(bl.roi||0)}</span>
+                <span class="d2" style="font-size:9px">${bl.openTime}${bl.closeTime?' → '+bl.closeTime:''}</span>
+                <span class="d2" style="font-size:9px">${blTs.length} trades</span>
+              </div>
+              ${bOpen&&blTs.length?`<div class="tree-trades"><table class="tbl">
+                <thead><tr><th>#</th><th>HORA</th><th>ASSET</th><th>DIR</th><th>STAKE</th><th>RES</th><th>P&L</th><th>CAPITAL</th><th>MG</th></tr></thead>
+                <tbody>${blTs.map(t=>{
+                  const pc=t.profit>0?'g':t.profit<0?'re':'go';
+                  const tp=t.result==='WIN'?`+$${(t.amount*(t.payout/100)).toFixed(2)}`:t.result==='LOSS'?`-$${t.amount.toFixed(2)}`:'$0.00';
+                  return`<tr>
+                    <td class="d2">${t.tradeNum}</td><td class="d2">${t.time}</td>
+                    <td>${t.asset||'—'}</td>
+                    <td><span class="badge b${(t.direction||'').toLowerCase()}">${t.direction||'—'}</span></td>
+                    <td>$${t.amount.toFixed(2)}</td>
+                    <td><span class="badge b${t.result.toLowerCase()}">${t.result}</span></td>
+                    <td class="${pc}" style="font-weight:500">${tp}</td>
+                    <td>${fmt(t.capitalAfter)}</td>
+                    <td class="d2">N${t.mgLevel+1}</td>
+                  </tr>`;
+                }).join('')}</tbody></table></div>`:bOpen?`<div class="tree-trades d2" style="font-size:9px">Sin trades.</div>`:''}
+            </div>`;
+          }).join(''):''}
+        </div>`;
+      }).join(''):''}
+    </div>`;
+  }).join(''):`<div style="font-size:10px;color:#333;padding:8px">Sin días registrados.</div>`;
+
+  // ── SESSIONS TABLE
+  const sessRows=BIDS.flatMap(id=>b(id).sessions).sort((a,b2)=>a.openTime>b2.openTime?-1:1).map(s=>{
+    const p=+(s.capitalFin-s.capitalIni).toFixed(2);const r=s.capitalIni?+(p/s.capitalIni*100).toFixed(2):0;
+    const cfg=BR_CFG[s.brokerId]||{color:'#888',name:'?'};
+    const st=b(s.brokerId).trades.filter(t=>t.sessionId===s.id&&!t.isRecovery);
+    const sw=st.filter(t=>t.result==='WIN').length;
+    const dayN=G.days.find(d=>d.id===s.dayId);
+    return`<tr>
+      <td style="color:${cfg.color}">${cfg.name}</td>
+      <td class="d2">${dayN?'D'+dayN.num:'?'}</td>
+      <td class="d2">S${s.num}</td><td>${s.date}</td>
+      <td class="d2">${s.openTime}${s.closeTime?' → '+s.closeTime:''}</td>
+      <td>${s.asset||'—'}</td><td>${fmt(s.capitalIni)}</td><td>${fmt(s.capitalFin)}</td>
+      <td class="${p>=0?'g':'re'}">${fmtS(p)}</td>
+      <td class="${r>=0?'g':'re'}">${fmtP(r)}</td>
+      <td>${b(s.brokerId).blocks.filter(bl=>bl.sessionId===s.id).length}</td>
+      <td>${st.length?sw+'W·'+(st.length-sw)+'L':'—'}</td>
+      <td><span class="badge b${s.status==='OPEN'?'open':'closed'}">${s.status}</span></td>
+    </tr>`;
+  }).join('');
+
+  // ── BLOCKS TABLE
+  const blkRows=BIDS.flatMap(id=>b(id).blocks).slice().reverse().map(bl=>{
+    const cfg=BR_CFG[bl.brokerId]||{color:'#888',name:'?'};
+    const sess2=b(bl.brokerId).sessions.find(s=>s.id===bl.sessionId);
+    const roi=bl.roi||(bl.capitalIni?+(bl.profit/bl.capitalIni*100).toFixed(2):0);
+    return`<tr>
+      <td style="color:${cfg.color}">${cfg.name}</td>
+      <td class="d2">B${bl.num}</td>
+      <td class="d2">${sess2?'S'+sess2.num:'?'}</td>
+      <td class="d2">${bl.openTime}${bl.closeTime?' → '+bl.closeTime:''}</td>
+      <td>${fmt(bl.capitalIni)}</td><td>${fmt(bl.capitalFin)}</td>
+      <td class="${bl.profit>=0?'g':'re'}">${fmtS(bl.profit)}</td>
+      <td class="${roi>=0?'g':'re'}">${fmtP(roi)}</td>
+      <td>${bl.cyclesCompleted}</td><td>${bl.tradeIds.length}</td>
+      <td class="${bl.ticketsGenerated.length?'am':'d2'}">${bl.ticketsGenerated.length}</td>
+      <td><span class="badge b${bl.status==='OPEN'?'open':'closed'}">${bl.status}</span></td>
+    </tr>`;
+  }).join('');
+
+  // ── TICKETS TABLE
+  const tktRows=BIDS.flatMap(id=>b(id).tickets).slice().reverse().map(t=>{
+    const cfg=BR_CFG[t.brokerId]||{color:'#888',name:'?'};
+    return`<tr>
+      <td style="color:${cfg.color}">${cfg.name}</td>
+      <td class="go">${t.id}</td>
+      <td>${t.originDate}</td>
+      <td class="d2">$${Math.abs(t.accLoss).toFixed(2)}</td>
+      <td><span class="badge b${t.status==='PENDING'?'pend':t.status==='ACTIVE'?'act':t.status==='RESOLVED'?'res':'fail'}">${t.status}</span></td>
+      <td class="am">$${MG_R[Math.min(t.level||0,2)]}</td>
+      <td class="d2">${t.tradeIds.length}</td>
+    </tr>`;
+  }).join('');
+
+  // ── BROKER SUMMARIES
+  const brokerSummaries=BIDS.map(id=>{
+    const cfg=BR_CFG[id];const br=b(id);const cap=bCap(id);
+    const bIni=br.initialCapital||br.capital;
+    const pnl2=+(cap-bIni).toFixed(2);const pnlPct2=bIni?+(pnl2/bIni*100).toFixed(2):0;
+    const bTrades2=br.trades.filter(t=>t.result==='WIN'||t.result==='LOSS');
+    const bWins=bTrades2.filter(t=>t.result==='WIN').length;
+    const wr2=bTrades2.length?bWins/bTrades2.length*100:null;
+    const pend2=br.tickets.filter(t=>t.status==='PENDING').length;
+    return`<div class="hist-card" style="border-top:2px solid ${cfg.color}">
+      <div class="hist-card-label" style="color:${cfg.color}">${cfg.name}</div>
+      <div class="hist-card-val ${pnl2>=0?'g':'re'}">${fmt(cap)}</div>
+      <div class="hist-card-sub">P&L: ${fmtS(pnl2)} (${fmtP(pnlPct2)})</div>
+      <div style="margin-top:5px;font-size:10px;display:flex;flex-direction:column;gap:2px">
+        <div class="mini-row"><span class="d2">WIN RATE</span><span class="${wr2!==null&&wr2>=50?'g':'re'}">${wr2!==null?wr2.toFixed(0)+'%':'—'}</span></div>
+        <div class="mini-row"><span class="d2">TRADES</span><span>${br.trades.length}</span></div>
+        <div class="mini-row"><span class="d2">TKT PEND</span><span class="${pend2?'am':'d2'}">${pend2}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const tabContent={
+    ledger:ledgerHtml,
+    tree:treeHtml,
+    sessions:allSess.length?`<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>BROKER</th><th>DÍA</th><th>#</th><th>FECHA</th><th>HORARIO</th><th>ASSET</th><th>CAP INI</th><th>CAP FIN</th><th>P&L</th><th>ROI</th><th>BLOQUES</th><th>W/L</th><th>STATUS</th></tr></thead><tbody>${sessRows}</tbody></table></div>`:`<div class="d2" style="font-size:10px">Sin sesiones.</div>`,
+    blocks:allBlks.length?`<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>BROKER</th><th>B#</th><th>SESS</th><th>HORARIO</th><th>CAP INI</th><th>CAP FIN</th><th>P&L</th><th>ROI</th><th>CYCLES</th><th>TRADES</th><th>TKTS</th><th>STATUS</th></tr></thead><tbody>${blkRows}</tbody></table></div>`:`<div class="d2" style="font-size:10px">Sin bloques.</div>`,
+    tickets:tkts.length?`<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>BROKER</th><th>ID</th><th>FECHA</th><th>LOSS ACUM</th><th>STATUS</th><th>NIVEL ACT</th><th>TRADES REC</th></tr></thead><tbody>${tktRows}</tbody></table></div>`:`<div class="d2" style="font-size:10px">Sin tickets.</div>`,
+  };
+
+  return`<div class="hist-main">
+    <div class="hist-cards">
+      ${gcards.map(([l,v,s,c])=>`<div class="hist-card"><div class="hist-card-label">${l}</div>
+        <div class="hist-card-val ${c}">${v}</div>
+        <div class="hist-card-sub">${s}</div></div>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px">${brokerSummaries}</div>
+    <div class="hist-panel">
+      <div class="hist-ptitle">
+        <div style="display:flex;gap:0">
+          ${tabs.map(([k,l])=>`<div onclick="setHistTab('${k}')" style="padding:3px 12px;cursor:pointer;font-size:9px;letter-spacing:1.5px;border-bottom:2px solid ${G._histTab===k?'#f1c40f':'transparent'};color:${G._histTab===k?'#f1c40f':'#444'}">${l}</div>`).join('')}
+        </div>
+        <span class="d2" style="font-size:9px">${allTrades().length} trades totales</span>
+      </div>
+      ${tabContent[G._histTab]||ledgerHtml}
+    </div>
+  </div>`;
+}
+
+// ─── EXPORT XLSX ──────────────────────────────────────────────────────────────
+function exportXLSX(){
+  const wb=XLSX.utils.book_new();
+  const allSess=BIDS.flatMap(id=>b(id).sessions);
+  const allBlks=BIDS.flatMap(id=>b(id).blocks);
+  const s1=[['BROKER','#','FECHA','INI','FIN','ASSET','PAYOUT','CAP INI','CAP FIN','P&L','ROI%','BLOQUES','STATUS']];
+  allSess.forEach(s=>{const p=+(s.capitalFin-s.capitalIni).toFixed(2);const r=s.capitalIni?+(p/s.capitalIni*100).toFixed(2):0;s1.push([BR_CFG[s.brokerId]?.name||s.brokerId,'S'+s.num,s.date,s.openTime,s.closeTime||'OPEN',s.asset,(s.payout||92)+'%',s.capitalIni,s.capitalFin,p,r+'%',s.blockIds.length,s.status]);});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(s1),'SESIONES');
+  const s2=[['BROKER','#','SESS','HORA INI','HORA FIN','CAP INI','CAP FIN','P&L','ROI%','CYCLES','TRADES','TKTS','STATUS']];
+  allBlks.forEach(bl=>{const sess2=b(bl.brokerId).sessions.find(s=>s.id===bl.sessionId);const roi=bl.roi||(bl.capitalIni?+(bl.profit/bl.capitalIni*100).toFixed(2):0);s2.push([BR_CFG[bl.brokerId]?.name||bl.brokerId,'B'+bl.num,sess2?'S'+sess2.num:'?',bl.openTime,bl.closeTime||'OPEN',bl.capitalIni,bl.capitalFin,bl.profit,roi+'%',bl.cyclesCompleted,bl.tradeIds.length,bl.ticketsGenerated.length,bl.status]);});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(s2),'BLOQUES');
+  const s3=[['#','BROKER','FECHA','HORA','DÍA','SESS','BLOQUE','ASSET','DIR','STAKE','PAYOUT','RES','P&L','CAPITAL','MG NIVEL','MODO','TICKET','RECOVERY']];
+  allTrades().forEach((t,i)=>{const cfg=BR_CFG[t.brokerId]||{name:'?'};const br2=b(t.brokerId);const sess2=br2.sessions.find(s=>s.id===t.sessionId);const blk2=br2.blocks.find(bl=>bl.id===t.blockId);const dayN=G.days.find(d=>d.id===t.dayId);const lvl=t.mgMode==='recovery'?'REC L'+(t.mgLevel+1)+' $'+MG_R[t.mgLevel]:t.mgMode==='full_martingale'?'FM L'+(t.mgLevel+1)+' $'+MG_FULL[t.mgLevel]:'N'+(t.mgLevel+1)+' $'+MG_N[t.mgLevel];s3.push([i+1,cfg.name,t.date,t.time,dayN?'D'+dayN.num:'?',sess2?'S'+sess2.num:'REC',blk2?'B'+blk2.num:t.isRecovery?'REC':'?',t.asset,t.direction,t.amount,t.payout+'%',t.result,t.profit,t.capitalAfter,lvl,t.mgMode==='full_martingale'?'FULL_MG':t.mgMode.toUpperCase(),t.ticketId||'',t.isRecovery?'YES':'NO']);});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(s3),'TRADES');
+  const s4=[['BROKER','ID','FECHA','LOSS ACUM','STATUS','NIVEL ACT','TRADES REC']];
+  allTkts().forEach(t=>{const cfg=BR_CFG[t.brokerId]||{name:'?'};s4.push([cfg.name,t.id,t.originDate,'-$'+Math.abs(t.accLoss).toFixed(2),t.status,'$'+MG_R[Math.min(t.level||0,2)],t.tradeIds.length]);});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(s4),'TICKETS');
+  const s5=[['DÍA','FECHA','HORA','CAPITAL','NOTA']];
+  G.capitalHistory.forEach(e=>s5.push([e.dayNum?'DAY '+e.dayNum:'',e.date,e.time,e.capital,e.note]));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(s5),'CAPITAL HIST');
+  XLSX.writeFile(wb,'JORMUND_MULTI_'+todayD()+'.xlsx');
+}
+
+// ─── TICKET MANAGEMENT ───────────────────────────────────────────────────────
+function markTicketResolved(brokerId,ticketId){
+  const br=b(brokerId);if(!br)return;
+  const tk=br.tickets.find(t=>t.id===ticketId);if(!tk)return;
+  tk.status='RESOLVED';
+  // Clean recState if this ticket was active
+  if(br.recState.active&&br.recState.ticketIds.includes(ticketId)){
+    br.recState={active:false,ticketIds:[],curIdx:0,level:0};
+  }
+  persist();render();
+  toast('✓ '+ticketId+' marcado como RESOLVED','g');
+}
+
+function markTicketFailed(brokerId,ticketId){
+  const br=b(brokerId);if(!br)return;
+  const tk=br.tickets.find(t=>t.id===ticketId);if(!tk)return;
+  tk.status='FAILED';
+  if(br.recState.active&&br.recState.ticketIds.includes(ticketId)){
+    br.recState={active:false,ticketIds:[],curIdx:0,level:0};
+  }
+  persist();render();
+  toast('⚠ '+ticketId+' marcado como FAILED','re');
+}
+
+function reactivateTicketRecovery(brokerId,ticketId){
+  const br=b(brokerId);if(!br)return;
+  if(!br.enabled){toast(BR_CFG[brokerId].name+' está DISABLED','am');return;}
+  const tk=br.tickets.find(t=>t.id===ticketId);if(!tk)return;
+  if(br.recState.active){toast('Ya hay un recovery activo en '+BR_CFG[brokerId].name,'am');return;}
+  if(!aDay()){toast('Abre un día antes de reactivar recovery','am');return;}
+  tk.status='ACTIVE';
+  br.recState={active:true,ticketIds:[ticketId],curIdx:0,level:tk.level||0};
+  persist();render();
+  toast('⚡ RECOVERY reactivado — '+ticketId+' en '+BR_CFG[brokerId].name,'go');
+}
+
+// ─── RENDER: MANAGE PENDING TICKETS ─────────────────────────────────────────
+function rManagePendingTickets(){
+  const rows=BIDS.flatMap(id=>
+    b(id).tickets
+      .filter(t=>t.status==='PENDING'||t.status==='ACTIVE')
+      .map(t=>({brokerId:id,ticket:t}))
+  );
+  if(!rows.length){
+    return`<div class="settings-section">
+      <div class="settings-title">MANAGE PENDING TICKETS</div>
+      <div style="font-size:10px;color:#333;padding:4px 0">No hay tickets PENDING o ACTIVE en ningún broker.</div>
+    </div>`;
+  }
+  const dayOpen=!!aDay();
+  const tableRows=rows.map(({brokerId,ticket:t})=>{
+    const cfg=BR_CFG[brokerId]||{color:'#888',name:'?'};
+    const br=b(brokerId);
+    const curLvl=t.status==='ACTIVE'?Math.min(br.recState.level||0,2):Math.min(t.level||0,2);
+    const recLvlAmt=MG_R[curLvl];
+    const isThisActive=br.recState.active&&br.recState.ticketIds&&br.recState.ticketIds.includes(t.id);
+    const otherRecActive=br.recState.active&&!isThisActive;
+    return`<tr>
+      <td><span style="color:${cfg.color};font-size:9px;font-weight:600">${cfg.name}</span></td>
+      <td><span class="go" style="font-size:10px">${t.id}</span></td>
+      <td class="d2" style="font-size:9px">${t.originDate||'—'}</td>
+      <td class="re">-$${Math.abs(t.accLoss||0).toFixed(2)}</td>
+      <td><span class="badge b${t.status==='PENDING'?'pend':'act'}">${t.status}</span></td>
+      <td class="am">$${recLvlAmt}<span class="d2" style="font-size:8px;margin-left:3px">L${curLvl+1}</span></td>
+      <td>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-sm btn-g" style="font-size:9px;padding:2px 7px"
+            onclick="markTicketResolved('${brokerId}','${t.id}')">✓ RESOLVED</button>
+          <button class="btn btn-sm btn-r" style="font-size:9px;padding:2px 7px"
+            onclick="markTicketFailed('${brokerId}','${t.id}')">✕ FAILED</button>
+          ${isThisActive
+            ?`<span style="font-size:9px;color:#f1c40f;letter-spacing:.5px">● EJECUTANDO</span>`
+            :otherRecActive
+              ?`<span style="font-size:9px;color:#555">otro rec activo</span>`
+              :dayOpen
+                ?`<button class="btn btn-sm btn-go" style="font-size:9px;padding:2px 7px"
+                    onclick="reactivateTicketRecovery('${brokerId}','${t.id}')">⚡ REACTIVATE</button>`
+                :`<span style="font-size:9px;color:#555">abre día</span>`}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  return`<div class="settings-section" style="border-color:#3a2000">
+    <div class="settings-title" style="color:#e67e22">
+      MANAGE PENDING TICKETS
+      <span style="color:#555;font-weight:400;letter-spacing:0;font-size:8px;margin-left:8px">${rows.length} ticket${rows.length!==1?'s':''}</span>
+    </div>
+    <div style="font-size:9px;color:#444;margin-bottom:10px;line-height:1.7">
+      Administración manual — independiente del Recovery Ticket System global.<br>
+      <span class="g">✓ RESOLVED</span> = cierra como ganado &nbsp;·&nbsp;
+      <span class="re">✕ FAILED</span> = pérdida estructural &nbsp;·&nbsp;
+      <span class="go">⚡ REACTIVATE</span> = activa recovery 23→50→104 (requiere día abierto)
+    </div>
+    <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead><tr>
+          <th>BROKER</th><th>TICKET ID</th><th>ORIGIN DATE</th>
+          <th>LOSS ACUM</th><th>STATUS</th><th>NIVEL ACT</th><th>ACTIONS</th>
+        </tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function rSettings(){
+  const anyDayOpen=!!aDay();
+  const hasTrades=BIDS.some(id=>b(id).trades.length>0);
+  const rows=BIDS.map(id=>{
+    const cfg=BR_CFG[id];const br=b(id);
+    const cap=bCap(id);
+    const ini=br.initialCapital||br.capital;
+    const pnl=+(cap-ini).toFixed(2);
+    const roi=ini?+(pnl/ini*100).toFixed(2):0;
+    const locked=anyDayOpen;
+    const warnTrades=!locked&&hasTrades&&br.trades.length>0;
+    return{id,cfg,br,cap,ini,pnl,roi,locked,warnTrades};
+  });
+  const brokerForms=rows.map(({id,cfg,br,cap,ini,pnl,roi,locked,warnTrades})=>{
+    return`<div style="border:1px solid #1a1a1a;padding:10px 14px;margin-bottom:6px;border-top:2px solid ${cfg.color}">
+      <div style="color:${cfg.color};font-size:10px;font-weight:600;letter-spacing:1px;margin-bottom:8px">${cfg.name}</div>
+      ${locked?`<div class="settings-locked">⊘ Edición bloqueada — hay un día abierto. Cierra el día primero.</div>`
+        :warnTrades?`<div class="settings-warning">⚠ Este broker ya tiene trades registrados. Cambiar el capital inicial afecta el cálculo de P&L y ROI histórico, pero no modifica trades anteriores.</div>`:''}
+      <div class="settings-row">
+        <span class="settings-label">INITIAL CAPITAL</span>
+        ${locked
+          ?`<span style="font-size:11px;color:#555">${fmt(ini)}</span>`
+          :`<div style="display:flex;gap:6px;align-items:center">
+              <span class="d2">$</span>
+              <input type="number" class="settings-input" id="ini-cap-settings-${id}" value="${ini}" step="0.01" min="0.01">
+              <button class="btn btn-sm btn-go" onclick="saveInitialCapital('${id}')">SAVE</button>
+            </div>`}
+      </div>
+    </div>`;
+  }).join('');
+
+  const summaryRows=rows.map(({id,cfg,cap,ini,pnl,roi})=>`
+    <tr>
+      <td style="color:${cfg.color}">${cfg.name}</td>
+      <td>${fmt(ini)}</td>
+      <td class="${pnl>=0?'g':'re'}">${fmt(cap)}</td>
+      <td class="${pnl>=0?'g':'re'}">${fmtS(pnl)}</td>
+      <td class="${roi>=0?'g':'re'}">${fmtP(roi)}</td>
+    </tr>`).join('');
+  const totCap=totalCap();const totIni=totalIni();const totPnl=totalPnl();
+  const totRoi=totIni?+(totPnl/totIni*100).toFixed(2):0;
+
+  // Supabase config
+  const sbCfg=sbCfgLoad();
+  const sbStatusDot=_sbReady?'#2ecc71':'#e74c3c';
+  const sbStatusText=_sbReady?'CONECTADO':'DESCONECTADO';
+
+  return`<div class="settings-main">
+
+    <div class="settings-section">
+      <div class="settings-title">RECOVERY TICKET SYSTEM</div>
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:9px;color:#888;margin-bottom:4px">Modo actual:</div>
+          <div style="font-size:12px;font-weight:600;color:${G.useRecoveryTickets?'#2ecc71':'#e67e22'}">${G.useRecoveryTickets?'ENABLED — Tickets activos':'DISABLED — Full martingale'}</div>
+          <div style="font-size:9px;color:#444;margin-top:4px;line-height:1.7">
+            ${G.useRecoveryTickets
+              ?'NORMAL: 1→2→5→11. Si pierde 11, crea ticket PENDING. Recovery al día siguiente: 23→50→104.'
+              :'FULL MG: 1→2→5→11→23→50→104 continuo. Sin tickets. Si pierde 104, reinicia a 1.'}
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-sm ${G.useRecoveryTickets?'btn-g':''}" onclick="setUseRecovery(true)">ENABLED</button>
+          <button class="btn btn-sm ${!G.useRecoveryTickets?'btn-am':''}" onclick="setUseRecovery(false)">DISABLED</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-title">SUPABASE — SINCRONIZACIÓN EN TIEMPO REAL</div>
+      <div class="sb-status-row">
+        <span class="sb-status-dot" style="background:${sbStatusDot}"></span>
+        <span style="color:${_sbReady?'#2ecc71':'#555'}">${sbStatusText}</span>
+        ${_sbReady?`<span class="d2" style="margin-left:8px;font-size:9px">Realtime activo · datos compartidos entre operadores</span>`:''}
+      </div>
+      <div style="font-size:9px;color:#444;margin-bottom:10px;line-height:1.8">
+        Ingresa tu URL y Anon Key de Supabase.<br>
+        Requiere tabla <span style="color:#f1c40f">profile_state</span> (profile_id text PK, state_json jsonb, updated_at timestamptz)
+        y tabla <span style="color:#f1c40f">profile_list</span> (id text PK, profiles jsonb, updated_at timestamptz)
+        con <span style="color:#f1c40f">Realtime habilitado</span>.
+        <span style="color:#3498db;cursor:pointer" onclick="window.open('https://supabase.com/dashboard','_blank')"> → Supabase Dashboard</span>
+      </div>
+      <div class="sb-cfg-row">
+        <span class="sb-cfg-label">PROJECT URL</span>
+        <input class="sb-cfg-input" id="sb-url" type="text" placeholder="https://xxxxxxxxxxxx.supabase.co" value="${sbCfg.url||''}">
+      </div>
+      <div class="sb-cfg-row">
+        <span class="sb-cfg-label">ANON KEY</span>
+        <input class="sb-cfg-input" id="sb-key" type="password" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." value="${sbCfg.key||''}">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button class="btn btn-go" onclick="sbConnect()">⚡ CONECTAR</button>
+        ${_sbReady?`<button class="btn btn-sm" onclick="sbDisconnect()">DESCONECTAR</button>`:''}
+        ${_sbReady?`<button class="btn btn-sm btn-g" onclick="sbPushNow()">↑ PUSH ESTADO AHORA</button>`:''}
+        ${_sbReady?`<button class="btn btn-sm btn-g" onclick="sbPullNow()">↓ PULL ESTADO AHORA</button>`:''}
+      </div>
+      <div style="margin-top:12px;border-top:1px solid #161616;padding-top:10px">
+        <div class="settings-title" style="margin-bottom:8px">SQL — CREAR TABLAS</div>
+        <div style="font-size:8px;color:#444;margin-bottom:6px">Ejecuta esto en el SQL Editor de Supabase para crear las tablas requeridas:</div>
+        <pre style="background:#0a0a0a;border:1px solid #1a1a1a;padding:8px 10px;font-size:9px;color:#888;overflow-x:auto;font-family:'JetBrains Mono',monospace;line-height:1.7">create table if not exists profile_state (
+  profile_id text primary key,
+  state_json jsonb not null default '{}',
+  updated_at timestamptz default now()
+);
+alter table profile_state replica identity full;
+
+create table if not exists profile_list (
+  id text primary key,
+  profiles jsonb not null default '[]',
+  updated_at timestamptz default now()
+);
+alter table profile_list replica identity full;
+
+-- Enable Realtime on both tables
+-- En Supabase: Database → Replication → Tables → activar profile_state
+
+-- RLS: permitir acceso anónimo (ajusta según tu seguridad)
+alter table profile_state enable row level security;
+create policy "anon all" on profile_state for all using (true) with check (true);
+alter table profile_list enable row level security;
+create policy "anon all" on profile_list for all using (true) with check (true);</pre>
+        <button class="btn btn-sm" style="margin-top:6px" onclick="navigator.clipboard&&navigator.clipboard.writeText(document.querySelector('pre').textContent).then(()=>toast('SQL copiado','g'))">COPIAR SQL</button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-title">BROKER STATUS</div>
+      ${BIDS.map(id=>{
+       const cfg=BR_CFG[id];
+       const br=b(id);
+       return `<div style="display:flex;align-items:center;justify-content:space-between;border:1px solid #1a1a1a;border-top:2px solid ${cfg.color};padding:8px 10px;margin-bottom:6px">
+         <div>
+           <div style="color:${cfg.color};font-size:10px;font-weight:600;letter-spacing:1px">${cfg.name}</div>
+           <div style="font-size:9px;color:${br.enabled?'#2ecc71':'#e67e22'};margin-top:2px">${br.enabled?'ENABLED — Operativo':'DISABLED — Excluido de operación'}</div>
+         </div>
+         <div style="display:flex;gap:6px">
+           <button class="btn btn-sm ${br.enabled?'btn-g':''}" onclick="setBrokerEnabled('${id}',true)">ENABLE</button>
+           <button class="btn btn-sm ${!br.enabled?'btn-am':''}" onclick="setBrokerEnabled('${id}',false)">DISABLE</button>
+         </div>
+       </div>`;
+     }).join('')}
+   </div>
+
+    <div class="settings-section">
+      <div class="settings-title">INITIAL CAPITAL POR BROKER</div>
+      ${brokerForms}
+    </div>
+    <div class="settings-section">
+      <div class="settings-title">RESUMEN DE CAPITAL</div>
+      <table class="cap-summary-tbl">
+        <thead><tr><th>BROKER</th><th>INITIAL CAPITAL</th><th>CURRENT CAPITAL</th><th>P&L</th><th>ROI</th></tr></thead>
+        <tbody>
+          ${summaryRows}
+          <tr style="border-top:1px solid #222">
+            <td class="go">TOTAL</td>
+            <td class="d2">${fmt(totIni)}</td>
+            <td class="${totPnl>=0?'g':'re'}">${fmt(totCap)}</td>
+            <td class="${totPnl>=0?'g':'re'}">${fmtS(totPnl)}</td>
+            <td class="${totRoi>=0?'g':'re'}">${fmtP(totRoi)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    ${rManagePendingTickets()}
+
+  </div>`;
+}
+function saveInitialCapital(id){
+  const el=document.getElementById('ini-cap-settings-'+id);if(!el)return;
+  const v=parseFloat(el.value);if(!v||v<=0){toast('Valor inválido','re');return;}
+  const br=b(id);
+  if(br.trades.length>0&&!confirm('Este broker ya tiene trades. ¿Confirmar cambio de capital inicial?\nNota: no se borran trades anteriores.')){return;}
+  br.initialCapital=v;br.capital=v;
+  persist();render();
+  toast('✓ Initial Capital '+BR_CFG[id].name+' actualizado a $'+v.toFixed(2),'g');
+}
+
+// ─── SUPABASE UI ACTIONS ─────────────────────────────────────────────────────
+async function sbConnect(){
+  const url=document.getElementById('sb-url')?.value?.trim();
+  const key=document.getElementById('sb-key')?.value?.trim();
+  if(!url||!key){toast('URL y Key requeridos','re');return;}
+  sbCfgSave(url,key);
+  toast('Conectando…','go');
+  const ok=await sbInit(url,key);
+  if(ok){
+    toast('✓ Supabase conectado','g');
+    // Pull profiles list from Supabase and merge
+    const remoteProfiles=await sbLoadProfiles();
+    if(remoteProfiles&&remoteProfiles.length){
+      const local=loadProfileList();
+      const merged=[...local];
+      remoteProfiles.forEach(rp=>{if(!merged.find(lp=>lp.id===rp.id))merged.push(rp);});
+      try{localStorage.setItem(PROFILE_LIST_KEY,JSON.stringify(merged));}catch(e){}
+    }
+    if(_activeProfileId)sbSubscribe(_activeProfileId);
+  }else{
+    toast('✗ Error de conexión — revisa URL y Key','re');
+  }
+  render();
+}
+function sbDisconnect(){
+  sbUnsubscribe();_sb=null;_sbReady=false;
+  toast('Supabase desconectado','am');render();
+}
+async function sbPushNow(){
+  if(!_sbReady){toast('Supabase no conectado','re');return;}
+  await sbPersist(_activeProfileId,stateSnapshot());
+  toast('✓ Estado enviado a Supabase','g');
+}
+async function sbPullNow(){
+  if(!_sbReady){toast('Supabase no conectado','re');return;}
+  const remote=await sbHydrate(_activeProfileId);
+  if(!remote){toast('Sin datos en Supabase para este perfil','am');return;}
+  applyState(remote);
+  try{localStorage.setItem(profileStateKey(_activeProfileId),JSON.stringify(remote));}catch(e){}
+  toast('✓ Estado cargado desde Supabase','g');
+  render();
+}
+
+// ─── PROFILE OVERLAY ─────────────────────────────────────────────────────────
+function showProfileOverlay(){renderProfileOverlay();}
+async function renderProfileOverlay(){
+  const ol=document.getElementById('profile-overlay');
+  // If Supabase is ready, try to merge profiles list from remote
+  if(_sbReady){
+    const remote=await sbLoadProfiles();
+    if(remote&&remote.length){
+      const local=loadProfileList();
+      const merged=[...local];
+      remote.forEach(rp=>{if(!merged.find(lp=>lp.id===rp.id))merged.push(rp);});
+      try{localStorage.setItem(PROFILE_LIST_KEY,JSON.stringify(merged));}catch(e){}
+    }
+  }
+  const list=loadProfileList();
+  const sbDot=_sbReady?'<span style="width:6px;height:6px;border-radius:50%;background:#2ecc71;display:inline-block;margin-right:4px"></span><span style="font-size:8px;color:#2ecc71">SUPABASE SYNC ON</span>':'<span style="font-size:8px;color:#333">SIN SUPABASE — solo local</span>';
+  const profileItems=list.length?list.map(p=>`
+    <div class="po-item${_activeProfileId===p.id?' active-p':''}" >
+      <span class="po-item-name">${p.name}</span>
+      <span class="po-item-meta">${p.id===_activeProfileId?'ACTIVE':''}</span>
+      <div class="po-item-actions">
+        <button class="btn btn-sm btn-go" onclick="loadProfile('${p.id}')">${p.id===_activeProfileId?'ENTER':'SELECT'}</button>
+${p.id===_activeProfileId?'<span class="g" style="font-size:9px">● ACTIVE</span>':''}
+        <button class="btn btn-sm" onclick="doRenameProfile('${p.id}','${p.name.replace(/'/g,"\\'")}')">REN</button>
+        ${p.id!==_activeProfileId?`<button class="btn btn-sm btn-r" onclick="doDeleteProfile('${p.id}','${p.name.replace(/'/g,"\\'")}')">DEL</button>`:''}
+      </div>
+    </div>`).join(''):`<div style="font-size:10px;color:#333;padding:8px">No hay perfiles. Crea uno abajo.</div>`;
+
+  ol.innerHTML=`
+  <div class="po-box">
+    <div class="po-title">JORMUNDGANDRSSON</div>
+    <div class="po-sub">SELECTOR DE PERFIL DE OPERADOR</div>
+    <div style="margin-bottom:12px;display:flex;align-items:center;gap:6px">${sbDot}</div>
+    <div class="po-list">${profileItems}</div>
+    <div style="border-top:1px solid #161616;padding-top:14px">
+      <div style="font-size:8px;color:#444;letter-spacing:1.5px;margin-bottom:6px">CREAR NUEVO PERFIL</div>
+      <div class="po-input-row">
+        <input id="po-new-name" placeholder="Nombre del operador..." style="height:28px;font-size:11px">
+        <button class="btn btn-go" onclick="doCreateProfile()">CREAR</button>
+      </div>
+    </div>
+    ${_activeProfileId?`<div style="text-align:right;margin-top:6px"><button class="btn btn-sm" onclick="document.getElementById('profile-overlay').style.display='none'" style="font-size:9px;color:#444">CANCELAR</button></div>`:''}
+    ${!_sbReady?`<div style="margin-top:12px;font-size:9px;color:#444;border-top:1px solid #161616;padding-top:8px">Configura Supabase en <span style="color:#f1c40f">SETTINGS → SUPABASE</span> para sincronización entre operadores.</div>`:''}
+  </div>`;
+  ol.style.display='flex';
+}
+async function doCreateProfile(){
+  const inp=document.getElementById('po-new-name');if(!inp)return;
+  const name=inp.value.trim();if(!name){toast('Nombre requerido','re');return;}
+  const pid=createProfile(name);await loadProfile(pid);
+}
+function doRenameProfile(pid,oldName){
+  const n=prompt('Nuevo nombre para "'+oldName+'":',oldName);
+  if(!n||!n.trim())return;
+  renameProfile(pid,n);
+  renderProfileOverlay();
+  if(_activeProfileId===pid)render();
+}
+function doDeleteProfile(pid,name){
+  if(!confirm('¿Eliminar perfil "'+name+'"? Todos sus datos serán borrados permanentemente.'))return;
+  deleteProfile(pid);
+  renderProfileOverlay();
+}
+
+// ─── MAIN RENDER ─────────────────────────────────────────────────────────────
+function render(){
+  if(!G._ready)return;
+  const hdr=rHeader();const nav=rNav();
+  let body='';
+  if(G._view==='register'){
+    body=`<div class="body">
+      <div class="main">
+        ${rGlobalControl()}
+        <div class="brokers" style="flex:1;min-height:0">
+          ${BIDS.map(id=>rBrokerCard(id)).join('')}
+        </div>
+        ${rDailyTarget()}
+      </div>
+      <div class="sidebar">${rSidebar()}</div>
+    </div>`;
+  }else if(G._view==='settings'){
+    body=`<div class="body">
+      <div class="main">${rSettings()}</div>
+      <div class="sidebar">${rSidebar()}</div>
+    </div>`;
+  }else{
+    body=`<div class="body">
+      <div class="main">${rHistory()}</div>
+      <div class="sidebar">${rSidebar()}</div>
+    </div>`;
+  }
+  document.getElementById('root').innerHTML=hdr+nav+body;
+  // Clock tick
+  clearInterval(window._clockTick);
+  window._clockTick=setInterval(()=>{
+    const el=document.getElementById('clock');
+    if(el){const n=new Date();el.textContent=n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0')+':'+n.getSeconds().toString().padStart(2,'0');}
+  },1000);
+}
+
+// ─── SAFE RENDER ─────────────────────────────────────────────────────────────
+function safeRender(){
+  try{
+    render();
+    console.log('[JORMUND] FINAL RENDER OK');
+  }catch(e){
+    console.error('[JORMUND] BOOT ERROR',e);
+    const root=document.getElementById('root');
+    if(root)root.innerHTML=`
+      <div style="padding:40px;font-family:'JetBrains Mono',monospace;background:#0a0a0a;color:#e74c3c;min-height:100vh">
+        <div style="font-size:14px;font-weight:600;letter-spacing:2px;margin-bottom:12px">BOOT ERROR</div>
+        <div style="font-size:11px;color:#888;margin-bottom:16px">Error al renderizar. Revisa la consola (F12) para más detalles.</div>
+        <div style="font-size:10px;color:#555;margin-bottom:20px">${String(e).substring(0,200)}</div>
+        <button onclick="resetLocalCache()" style="border:1px solid #5c1a1a;background:transparent;color:#e74c3c;padding:6px 14px;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;letter-spacing:1px">RESET LOCAL CACHE</button>
+        <div style="font-size:9px;color:#333;margin-top:8px">Nota: solo borra localStorage local. Supabase NO se modifica.</div>
+      </div>`;
+  }
+}
+
+function resetLocalCache(){
+  if(!confirm('¿Borrar localStorage local? Los datos en Supabase se conservan.'))return;
+  const toKeep=[SB_CFG_KEY];
+  const keys=Object.keys(localStorage).filter(k=>k.startsWith('jormund'));
+  keys.forEach(k=>{if(!toKeep.includes(k))localStorage.removeItem(k);});
+  location.reload();
+}
+
+function validateState(){
+  // Ensure critical nested objects exist after hydration
+  if(typeof G.useRecoveryTickets==='undefined')G.useRecoveryTickets=true;
+  if(!G._lf)G._lf={broker:'ALL',result:'ALL',mode:'ALL'};
+  if(!G._tree)G._tree={};
+  if(!G.days)G.days=[];
+  if(!G.capitalHistory)G.capitalHistory=[];
+  BIDS.forEach(id=>{
+    const br=BS[id];if(!br)return;
+    if(!br.sessions)br.sessions=[];
+    if(!br.blocks)br.blocks=[];
+    if(!br.trades)br.trades=[];
+    if(!br.tickets)br.tickets=[];
+    if(!br.blockMG)br.blockMG={level:0,accLoss:0};
+    if(!br.recState)br.recState={active:false,ticketIds:[],curIdx:0,level:0};
+    if(typeof br.initialCapital==='undefined')br.initialCapital=br.capital||100;
+    if(typeof br.enabled==='undefined')br.enabled=true;
+  });
+}
+
+// ─── BOOT ─────────────────────────────────────────────────────────────────────
+(async function bootSafe(){
+  console.log('[JORMUND] BOOT START');
+
+  // STEP 1: Default state is already defined above (G, BS).
+
+  // STEP 2: Load localStorage immediately — no Supabase wait
+  console.log('[JORMUND] LOCAL STATE LOADED');
+  const list=loadProfileList();
+  const pid=getActiveProfileId();
+
+  // STEP 3: If a valid profile exists locally, load it right now
+  if(pid&&list.find(p=>p.id===pid)){
+    _activeProfileId=pid;
+    try{
+      const r=localStorage.getItem(profileStateKey(pid));
+      if(r){const d=JSON.parse(r);applyState(d);console.log('[JORMUND] HYDRATE START (local)');}
+    }catch(e){console.warn('[JORMUND] HYDRATE FAILED (local)',e);}
+  }else if(list.length===0){
+    // Check for legacy jormund_v5 data and auto-migrate
+    const legacy=localStorage.getItem('jormund_v5');
+    const newPid=createProfile('DEFAULT');
+    if(legacy){try{localStorage.setItem(profileStateKey(newPid),legacy);}catch(e){}}
+    _activeProfileId=newPid;
+    setActiveProfileId(newPid);
+    try{
+      const r=localStorage.getItem(profileStateKey(newPid));
+      if(r){const d=JSON.parse(r);applyState(d);}
+    }catch(e){}
+  }
+
+  // STEP 4: Validate & patch state
+  validateState();
+  console.log('[JORMUND] HYDRATE OK');
+
+  // STEP 5: Mark ready and render IMMEDIATELY — Supabase has NOT been called yet
+  G._ready=true;
+  console.log('[JORMUND] INITIAL LOCAL RENDER');
+
+  if(_activeProfileId){
+    safeRender();
+    renderProfileOverlay();
+    console.log('[JORMUND] BOOT COMPLETE (profile selector shown)');
+  }else{
+    G._ready=true;
+    safeRender();
+    renderProfileOverlay();
+    console.log('[JORMUND] BOOT COMPLETE (profile selector shown)');
+  }
+
+  // STEP 6: NOW try Supabase in the background — non-blocking
+  console.log('[JORMUND] SUPABASE INIT START');
+  const sbCfg=sbCfgLoad();
+  if(sbCfg.url&&sbCfg.key){
+    try{
+      const ok=await Promise.race([
+        sbInit(sbCfg.url,sbCfg.key),
+        new Promise(res=>setTimeout(()=>res(false),8000)) // 8s timeout
+      ]);
+      if(ok){
+        console.log('[JORMUND] SUPABASE INIT OK');
+        // Merge remote profiles list
+        try{
+          const remote=await sbLoadProfiles();
+          if(remote&&remote.length){
+            const local=loadProfileList();const merged=[...local];
+            remote.forEach(rp=>{if(!merged.find(lp=>lp.id===rp.id))merged.push(rp);});
+            localStorage.setItem(PROFILE_LIST_KEY,JSON.stringify(merged));
+          }
+        }catch(e){}
+        // Pull remote state for active profile and merge (remote wins)
+        if(_activeProfileId){
+          console.log('[JORMUND] HYDRATE START (supabase)');
+          try{
+            const remote=await sbHydrate(_activeProfileId);
+            if(remote){
+              applyState(remote);validateState();
+              localStorage.setItem(profileStateKey(_activeProfileId),JSON.stringify(remote));
+              console.log('[JORMUND] HYDRATE OK (supabase)');
+              safeRender();
+            }
+          }catch(e){console.warn('[JORMUND] HYDRATE FAILED (supabase)',e);}
+          sbSubscribe(_activeProfileId);
+        }
+      }else{
+        console.warn('[JORMUND] SUPABASE INIT FAILED — operating offline');
+        syncIndicator('err','DISCONNECTED');
+      }
+    }catch(e){
+      console.warn('[JORMUND] SUPABASE INIT FAILED',e);
+      syncIndicator('err','DISCONNECTED');
+    }
+  }else{
+    console.log('[JORMUND] SUPABASE INIT SKIPPED — no config');
+  }
+})();
+</script>
+</body>
+</html>
